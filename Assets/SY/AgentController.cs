@@ -27,7 +27,7 @@ public class AgentController : Agent
         m_ResetParams = Academy.Instance.EnvironmentParameters;
 
         //Academy.Instance.DisableAutomaticStepping();
-        //Academy.Instance.AutomaticSteppingEnabled = false;
+        Academy.Instance.AutomaticSteppingEnabled = false;
 
     }
 
