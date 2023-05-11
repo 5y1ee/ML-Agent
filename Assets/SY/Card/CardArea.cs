@@ -10,6 +10,7 @@ public class CardArea : MonoBehaviour
 {
     EnvironmentParameters m_ResetParams;
 
+    public GameObject Arrow;
     public TextMeshProUGUI TableGold_Text;
     public TextMeshProUGUI GameNumber_Text;
     public int gameNumber = 1;
@@ -17,8 +18,8 @@ public class CardArea : MonoBehaviour
     public CardAgent[] Players; // 플레이어 배열
     public bool[] PlayerConditions; // 플레이어 컨디션 배열
 
-    private int m_CardNumber = 53;  // 총 카드 수
-    public int[] CardDeck = new int[53];    // 덱 배열
+    private int m_CardNumber = 52;  // 총 카드 수
+    public int[] CardDeck = new int[53];    // 덱 배열 (0번은 빼놓고 1부터 1로 계산하도록)
     [SerializeField] private int gameTurn, playerTurn, curIdx, tableGold;   // 턴, 덱 인덱스, 판돈
 
     // Methods
@@ -56,6 +57,8 @@ public class CardArea : MonoBehaviour
         {
             Players[i].AgentIndex = i;
             PlayerConditions[i] = true;
+            Players[i].GetComponent<MeshRenderer>().material.color = Color.white;
+            //Debug.Log(i + " make white");
         }
 
         GameNumber_Text.text = "Game Number : " + gameNumber;
@@ -70,17 +73,21 @@ public class CardArea : MonoBehaviour
         Debug.Log("Deck Reset..");
 
         CardDeck[0] = -1;
-        for (int i = 1; i < m_CardNumber; i++)
+        for (int i = 0; i < m_CardNumber; i++)
         {
-            CardDeck[i] = i;
+            int pic = i / 13;
+            int num = i % 13 + 1;
+            CardDeck[i+1] = 100*pic+num;
         }
 
-        for (int i=1; i< m_CardNumber; i++)
+        // Shuffle
+        int DeckLength = CardDeck.Length;
+        for (int i = 1; i < DeckLength; i++)
         {
-            int j = Mathf.FloorToInt(Random.Range(1, m_CardNumber));
+            int j = Mathf.FloorToInt(Random.Range(1, m_CardNumber + 1));
             int tmp = CardDeck[i];
-            CardDeck[i]= CardDeck[j];
-            CardDeck[j]= tmp;
+            CardDeck[i] = CardDeck[j];
+            CardDeck[j] = tmp;
         }
 
         curIdx = 1;
@@ -109,6 +116,8 @@ public class CardArea : MonoBehaviour
         }
 
         NextPlayer();
+        Players[playerTurn].GetComponent<MeshRenderer>().material.color = Color.red;
+        //Debug.Log(playerTurn + " make red");
 
         // 처음 시작할 때 (playerturn == 0 && gameturn == 0) 게임턴만 증가
         // 끝날 때 (playerturn == playernum && gameturn == 5) 게임턴만 증가
@@ -178,12 +187,15 @@ public class CardArea : MonoBehaviour
         // Half = 0
         // Call = 1
         // Die = 2
-
+        //Debug.Log(playerTurn + " make white");
+        Players[playerTurn].GetComponent<MeshRenderer>().material.color = Color.white;
         Players[playerTurn].TakeAction(val);
     }
 
     public void PlayerDie(int idx)
     {
+        //Debug.Log(idx + " make black");
+        Players[idx].GetComponent<MeshRenderer>().material.color = Color.black;
         PlayerConditions[idx] = false;
         NextPlayer();
     }
@@ -202,16 +214,33 @@ public class CardArea : MonoBehaviour
 
     public void NextPlayer()
     {
-
-        while (PlayerConditions[playerTurn] == false)
+        int cnt = 0;
+        for (int i=0; i<PlayerNum; i++)
         {
-            playerTurn++;
-            if (playerTurn == PlayerNum)
-            {
-                gameTurn++;
-                playerTurn = 0;
-            }
+            if (PlayerConditions[i] == false)
+                cnt++;
         }
+
+        if (cnt == PlayerNum - 1)
+        {
+            EndGame();
+            return;
+        }
+        else
+        {
+            while (PlayerConditions[playerTurn] == false)
+            {
+                playerTurn++;
+                if (playerTurn == PlayerNum)
+                {
+                    gameTurn++;
+                    playerTurn = 0;
+                }
+            }
+
+        }
+
+        Arrow.transform.position = Players[playerTurn].GetComponent<CardAgent>().GoldText.transform.position;
 
         if (gameTurn == 6)
             EndGame();
