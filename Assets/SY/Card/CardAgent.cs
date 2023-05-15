@@ -23,6 +23,7 @@ public partial class CardAgent : Agent
         m_ResetParams = Academy.Instance.EnvironmentParameters;
 
         AgentGold(100);
+        RoundGold = 0;
         Hand = new List<int>();
         Hand_Num = new int[13];
         Hand_Pic = new int[4];
@@ -55,13 +56,14 @@ public partial class CardAgent : Agent
 
     }
 
-    // 에이전트에게 전달할 벡터 관측 정보의 요소들을 결정
+    // 에이전트에게 전달할 벡터 관측 정보의 요소들을 결정 (필수 요소#1)
     public override void CollectObservations(VectorSensor sensor)
     {
 
         sensor.AddObservation(1);
     }
 
+    // (필수 요소#2)
     public override void OnActionReceived(ActionBuffers actions)
     {
 
@@ -74,14 +76,13 @@ public partial class CardAgent : Agent
 
     }
 
-    // 에피소드가 시작될 때마다 호출되는 함수
+    // 에피소드가 시작될 때마다 호출되는 함수 (필수 요소#3)
     public override void OnEpisodeBegin()
     {
         Debug.Log("OnEpisodeBegin");
 
         AgentReset();
 
-        agentCondition = AgentCondition.Alive;
         if(AgentIdx == Area.PlayerNum-1)
             Area.AreaReset();
     }
@@ -94,13 +95,46 @@ public partial class CardAgent
 {
     public enum AgentType { Auto, Heuristic, TypeEnd };
     public enum AgentCondition { Alive, Dead, ConditionEnd };
+    enum CardPicture { Spade, Diamond, Heart, Clover };
+    public enum HandRank
+    {
+        None,
+        TOP = 1,
+        ONEPAIR = 2,
+        TWOPAIR = 3,
+        TRIPLE = 4,
+        STRAIGHT = 5,
+        FLUSH = 6,
+        FULLHOUSE = 7,
+        FOURCARD = 8,
+        STRAIGHTFLUSH = 9,
+        RANKEND
+    };
+    public enum CardNumber
+    {
+        Ace = 1,
+        Two = 2,
+        Three = 3,
+        Four = 4,
+        Five = 5,
+        Six = 6,
+        Seven = 7,
+        Eight = 8,
+        Nine = 9,
+        Ten = 10,
+        Jack = 11,
+        Queen = 12,
+        King = 13,
+        NUMBEREND
+    }
 
     public AgentType agentType = AgentType.Auto;
     public AgentCondition agentCondition = AgentCondition.Alive;
+    public HandRank agentRank = HandRank.None;
 
-    [SerializeField] int Gold, AgentIdx;
+    [SerializeField] int Gold, RoundGold,AgentIdx;
     [SerializeField] double WinRate;
-    [SerializeField] List<int> Hand;
+    [SerializeField] List<int> Hand, Rank_Num;
     [SerializeField] int[] Hand_Num, Hand_Pic;
     [SerializeField] int Hand_cnt;
     [SerializeField] List<List<int>> OppHands;
@@ -110,18 +144,20 @@ public partial class CardAgent
     //
     public int AgentIndex { get { return AgentIdx; } set { AgentIdx = value; } }
 
+    public List<int> AgentRankNum { get { return Rank_Num; } }
+
     // Card Methods
     public void TakeCard(int val)
     {
         Hand.Add(val);
         Hand_Pic[val / 100]++;
-        Hand_Num[(val % 100)-1]++;
+        Hand_Num[(val % 100) - 1]++;
         Hand_cnt = Hand.Count;
 
         HandRanking();
 
         string str = "";
-        for (int i=0; i<Hand_cnt; i++)
+        for (int i = 0; i < Hand_cnt; i++)
         {
             str += Hand[i].ToString() + ", ";
         }
@@ -132,17 +168,19 @@ public partial class CardAgent
     {
         //Debug.Log("Click..");
 
-        switch(val)
+        switch (val)
         {
             // Half
             case 0:
                 Area.BetGold(2);
+                RoundGold += 2;
                 AgentGold(-2);
                 break;
 
             // Call
             case 1:
                 Area.BetGold(1);
+                RoundGold += 1;
                 AgentGold(-1);
                 break;
 
@@ -162,18 +200,24 @@ public partial class CardAgent
         if (Area.GetPlayerTurn == AgentIdx)
         {
             Debug.Log("Click.....");
-            TakeAction(0);
+            //TakeAction(0);
         }
 
     }
 
     void AgentReset()
     {
+        agentCondition = AgentCondition.Alive;
+        agentRank = HandRank.None;
+
+        RoundGold = 0;
+
         Hand.Clear();
+        Rank_Num.Clear();
         Array.Clear(Hand_Pic, 0, 4);
         Array.Clear(Hand_Num, 0, 13);
         Hand_cnt = 0;
-        
+
         OppHands.Clear();
         OppBets.Clear();
         OppCondition.Clear();
@@ -182,16 +226,25 @@ public partial class CardAgent
 
     }
 
-    public void EpisodeEnd(int winner, int gold)
+    public void EpisodeEnd(List<int> winners, int gold)
     {
+        int cnt = winners.Count;
 
-        if (AgentIdx == winner)
+        if(winners.Contains(AgentIdx))
         {
-            AgentGold(gold);
-            SetReward(1f);
+            AgentGold(gold / cnt);
+            SetReward(gold / cnt);
         }
         else
-            SetReward(-1f);
+            SetReward(-1 * RoundGold);
+
+        //if (AgentIdx == winner)
+        //{
+        //    AgentGold(gold);
+        //    SetReward(gold);
+        //}
+        //else
+        //    SetReward(-1 * RoundGold);
 
         EndEpisode();
     }
@@ -204,9 +257,6 @@ public partial class CardAgent
 
 
     // Poker Methods
-
-    enum CardPicture { Spade, Diamond, Heart, Clover };
-    enum HandRank {  };
 
     void HandRanking()
     {
@@ -227,45 +277,72 @@ public partial class CardAgent
         12. 백 스트레이트 플러시 (0.0032%)
         13. 로열 스트레이트 플러스 (0.0032%)
         */
+        Rank_Num.Clear();
+        // Pair Check pairNum = 0, tripleNum = 0, 
+        int top = 0, pairCnt = 0, tripleCnt = 0, quadra = 0;
+        List<int> pairNums = new List<int>();
+        List<int> tripleNums = new List<int>();
 
-        // Pair Check
-        int top = 0, pairCnt = 0, pairNum = 0, tripleCnt = 0, tripleNum = 0, quadra = 0;
-        for (int i=0; i<Hand_Num.Length; i++)
+        for (int i = 0; i < Hand_Num.Length; i++)
         {
-            switch(Hand_Num[i])
+            int num = Hand_Num[i];
+
+            switch (num)
             {
                 case 1:
-                    if (top != 1)
+                    if (top != (int)CardNumber.Ace)
                         top = i + 1;
                     break;
 
                 case 2:
-                    if (pairNum != 1)
-                        pairNum = i + 1;
+                    pairNums.Add(i + 1);
                     pairCnt++;
+
+                    if (top != (int)CardNumber.Ace)
+                        top = i + 1;
+
                     break;
 
                 case 3:
-                    if (tripleNum != 1)
-                        tripleNum = i + 1;
+                    tripleNums.Add(i + 1);
                     tripleCnt++;
+
+                    if (top != (int)CardNumber.Ace)
+                        top = i + 1;
+
                     break;
 
                 case 4:
                     quadra = i + 1;
+
+                    if (top != (int)CardNumber.Ace)
+                        top = i + 1;
+
                     break;
             }
 
         }
 
+        if (pairCnt > 0 && pairNums[0] == (int)CardNumber.Ace)
+        {
+            pairNums.RemoveRange(0, 1);
+            pairNums.Add((int)CardNumber.Ace);
+        }
+        if (tripleCnt > 0 && tripleNums[0] == (int)CardNumber.Ace)
+        {
+            tripleNums.RemoveRange(0, 1);
+            tripleNums.Add((int)CardNumber.Ace);
+        }
+
+
         // Straight Check 10 > A > 9876...2
         // 최적화 가능?
         int straightCnt = 0, straightNum = 0;
         double[] straightProb = new double[10];
-        for (int i=0; i<10; i++)
+        for (int i = 0; i < 10; i++)
         {
             int tmp = 0;
-            for (int k=i; k<i+5; k++)
+            for (int k = i; k < i + 5; k++)
             {
                 if (k == 13)
                 {
@@ -275,14 +352,14 @@ public partial class CardAgent
 
                 else if (Hand_Num[k] > 0)
                     tmp++;
-                else
-                {
-                    ;
-                }
+                
             }
 
 
-            if (tmp > straightCnt) straightCnt = tmp;
+            if (tmp > straightCnt)
+            {
+                straightCnt = tmp;
+            }
             else if (tmp == straightCnt)
             {
                 // TODO
@@ -290,13 +367,18 @@ public partial class CardAgent
             }
 
             if (straightCnt == 5)
-                straightNum = i;
+            {
+                if (i == 10)
+                    straightNum = (int)CardNumber.Ace;
+                else
+                    straightNum = i + 1;
+            }
 
         }
 
-
+        // Flush Check
         int flushCnt = 0; int flushPic = -1;
-        for (int i=0; i<Hand_Pic.Length; i++)
+        for (int i = 0; i < Hand_Pic.Length; i++)
         {
             if (flushCnt < Hand_Pic[i])
                 flushCnt = Hand_Pic[i];
@@ -308,13 +390,18 @@ public partial class CardAgent
         // Hand Rank
         if (flushCnt == 5 && straightCnt == 5)
         {
-            for (int i=straightNum; i<straightNum+5; i++)
+            for (int i = straightNum; i < straightNum + 5; i++)
             {
                 if (Hand[i] / 100 != flushPic)
                     break;
-                if (i==straightNum+4)
+                if (i == straightNum + 4)
                 {
-                    RankText.text = "Straight Flush";
+                    for (int j = 4; j >= 0; --j)
+                    {
+                        Rank_Num.Add(straightNum + j);
+                    }
+                    agentRank = HandRank.STRAIGHTFLUSH;
+                    RankText.text = (CardPicture)flushPic + straightNum + "Straight Flush";
                     return;
                 }
             }
@@ -322,46 +409,71 @@ public partial class CardAgent
 
         if (quadra > 0)
         {
+            Rank_Num.Add(quadra);
+            agentRank = HandRank.FOURCARD;
             RankText.text = quadra + "Four Card";
             return;
         }
 
-        if (tripleNum > 0 && pairNum > 0) 
+        if (tripleCnt > 0 && pairCnt > 0 || tripleCnt > 1)
         {
-            RankText.text = tripleNum + "Full House";
+            if (tripleCnt > 1)
+            {
+                Rank_Num.Add(tripleNums[tripleCnt - 1]);
+                Rank_Num.Add(tripleNums[tripleCnt - 2]);
+            }
+            else
+            {
+                Rank_Num.Add(tripleNums[tripleCnt - 1]);
+                Rank_Num.Add(pairNums[pairCnt - 1]);
+            }
+            agentRank = HandRank.FULLHOUSE;
+            RankText.text = Rank_Num[0] + ", " + Rank_Num[1] + "Full House";
             return;
         }
 
         if (flushPic > 0)
         {
+            Rank_Num.Add(top);
+            agentRank = HandRank.FLUSH;
             RankText.text = (CardPicture)flushPic + "Flush";
             return;
         }
 
         if (straightNum > 0)
         {
+            agentRank = HandRank.STRAIGHT;
             RankText.text = straightNum + "Straight";
             return;
         }
         
-        if (tripleNum > 0)
+        if (tripleCnt > 0)
         {
-            RankText.text = tripleNum + "Triple";
+            Rank_Num.Add(tripleNums[tripleCnt - 1]);
+            agentRank = HandRank.TRIPLE;
+            RankText.text = Rank_Num[0] + "Triple";
             return;
         }
 
         if (pairCnt > 1)
         {
-            RankText.text = pairNum + "Two Pair";
+            Rank_Num.Add(pairNums[pairCnt - 1]);
+            Rank_Num.Add(pairNums[pairCnt - 2]);
+            agentRank = HandRank.TWOPAIR;
+            RankText.text = Rank_Num[0] + ", " + Rank_Num[1] + "Two Pair";
             return;
         }
 
         if (pairCnt > 0)
         {
-            RankText.text = pairNum + "One Pair";
+            Rank_Num.Add(pairNums[pairCnt - 1]);
+            agentRank = HandRank.ONEPAIR;
+            RankText.text = Rank_Num[0] + "One Pair";
             return;
         }
 
+        Rank_Num.Add(top);
+        agentRank = HandRank.TOP;
         RankText.text = top + "Top";
         return;
 
