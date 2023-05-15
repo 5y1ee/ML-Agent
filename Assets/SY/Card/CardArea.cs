@@ -5,6 +5,8 @@ using Unity.MLAgents;
 using TMPro;
 using JetBrains.Annotations;
 using Unity.VisualScripting;
+using System.Reflection;
+using static CardAgent;
 
 public class CardArea : MonoBehaviour
 {
@@ -13,10 +15,12 @@ public class CardArea : MonoBehaviour
     public GameObject Arrow;
     public TextMeshProUGUI TableGold_Text;
     public TextMeshProUGUI GameNumber_Text;
+    public TextMeshProUGUI Result_Text;
     public int gameNumber = 1;
 
     public CardAgent[] Players; // 플레이어 배열
     public bool[] PlayerConditions; // 플레이어 컨디션 배열
+    public bool isDone;
 
     private int m_CardNumber = 52;  // 총 카드 수
     public int[] CardDeck = new int[53];    // 덱 배열 (0번은 빼놓고 1부터 1로 계산하도록)
@@ -48,6 +52,7 @@ public class CardArea : MonoBehaviour
 
     public void AreaReset()
     {
+        isDone = false;
         gameTurn = 0;
         playerTurn = 0;
         DeckReset();
@@ -172,18 +177,107 @@ public class CardArea : MonoBehaviour
 
     void EndGame()
     {
+        List<int> winners = new List<int>();
         int winner = 0;
+        int winnerRank = 0;
+        
+        for (int i=0; i<PlayerNum; ++i)
+        {
+            if (PlayerConditions[i] == false)
+                continue;
+            
+            int playerRank = (int)Players[i].agentRank;
 
+            if (playerRank > winnerRank)
+            {
+                winners.Clear();
+                winners.Add(i);
+                winner = i;
+                winnerRank = playerRank;
+            }
+            else if (playerRank == winnerRank)
+            {
+                int cnt = Players[winner].AgentRankNum.Count;
+
+                for (int k=0; k<cnt; ++k)
+                {
+                    Debug.Log(Players[winner].AgentRankNum[k] + " " + Players[i].AgentRankNum[k]);
+                    if (Players[winner].AgentRankNum[k] > Players[i].AgentRankNum[k])
+                    {
+                        if (Players[i].AgentRankNum[k] == (int)CardNumber.Ace)
+                        {
+                            winners.Clear();
+                            winners.Add(i);
+                            winner = i;
+                            break;
+                        }
+                        else
+                            break;
+                    }
+                    else if (Players[winner].AgentRankNum[k] < Players[i].AgentRankNum[k])
+                    {
+                        if (Players[winner].AgentRankNum[k] == (int)CardNumber.Ace)
+                            break;
+                        else
+                        {
+                            winners.Clear();
+                            winners.Add(i);
+                            winner = i;
+                            break;
+                        }
+                    }
+                    if (k == cnt - 1)
+                    {
+                        // DRAW....
+                        Debug.Log("DRAW..");
+                        winners.Add(i);
+
+                    }
+                }
+
+            }
+        }
+
+        Result_Text.gameObject.SetActive(true);
+        string winnerStr = "";
+        foreach (int k in winners)
+        {
+            winnerStr += k.ToString();
+            winnerStr += ", ";
+        }
+        Result_Text.text = winnerStr + " Player wins the game. +" + tableGold;
+
+        isDone = true;
+        StartCoroutine(Wait5Sec(winners));
+
+        //for (int i = 0; i < PlayerNum; i++)
+        //{
+        //    Players[i].EpisodeEnd(winner, tableGold);
+        //}
+        //gameNumber++;
+
+        //AreaReset();  // 여기서 AreaReset 하지 않는 이유가 뭐더라..?
+
+    }
+
+    IEnumerator Wait5Sec(List<int> winners)
+    {
+
+        yield return new WaitForSeconds(5.0f);
+        Result_Text.gameObject.SetActive(false);
+        isDone = false;
         for (int i = 0; i < PlayerNum; i++)
         {
-            Players[i].EpisodeEnd(winner, tableGold);
+            Players[i].EpisodeEnd(winners, tableGold);
         }
         gameNumber++;
-        //AreaReset();
     }
+
 
     public void BetButtons(int val)
     {
+        if (isDone)
+            return;
         // Half = 0
         // Call = 1
         // Die = 2
@@ -224,6 +318,7 @@ public class CardArea : MonoBehaviour
         if (cnt == PlayerNum - 1)
         {
             EndGame();
+            //gameTurn = 6;
             return;
         }
         else
