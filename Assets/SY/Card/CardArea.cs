@@ -18,8 +18,8 @@ public class CardArea : MonoBehaviour
     public TextMeshProUGUI Result_Text;
     public int gameNumber = 1;
 
-    public CardAgent[] Players; // 플레이어 배열
-    public bool[] PlayerConditions; // 플레이어 컨디션 배열
+    public List<GameAgents> PlayerAgents;
+
     public bool isDone;
 
     private int m_CardNumber = 52;  // 총 카드 수
@@ -27,10 +27,12 @@ public class CardArea : MonoBehaviour
     [SerializeField] private int gameTurn, playerTurn, curIdx, tableGold;   // 턴, 덱 인덱스, 판돈
 
     // Methods
+    public List<int> GetPlayerHands(int idx) { return PlayerAgents[idx]._agentHands;  }
+    public int PlayerNum { get { return PlayerAgents.Count; } }
+
     public int GetTurn { get { return gameTurn; } }
     public int GetPlayerTurn { get { return playerTurn; } set { playerTurn = value; } }
     public int GetIndex { get { return curIdx; } }
-    public int PlayerNum { get { return Players.Length; } }
     public int TableGold { get { return tableGold; } set { tableGold = value; } }
 
     // Basic Methods
@@ -38,11 +40,19 @@ public class CardArea : MonoBehaviour
     {
         m_ResetParams = Academy.Instance.EnvironmentParameters;
 
-        PlayerConditions = new bool[PlayerNum];
+        int _cnt = this.transform.childCount;
+        PlayerAgents = new List<GameAgents>();
+        for (int i=0; i<_cnt; i++)
+        {
+            PlayerAgents.Add(new GameAgents());
+            PlayerAgents[i]._agent = this.transform.GetChild(i).GetComponent<CardAgent>();
+            PlayerAgents[i]._agentCondition = true;
+            PlayerAgents[i]._agentHands = new List<int>();
+        }
+
         gameNumber = 1;
         AreaReset();
     }
-
 
     // ML-Agents Methods
     void SetEnvironment()
@@ -53,22 +63,23 @@ public class CardArea : MonoBehaviour
     public void AreaReset()
     {
         isDone = false;
-        gameTurn = 0;
+        gameTurn = 1;
         playerTurn = 0;
         DeckReset(CardDeck);
         ResetGold();
 
-        for (int i = 0; i < Players.Length; i++)
+        for (int i = 0; i < PlayerNum; i++)
         {
-            Players[i].AgentIndex = i;
-            PlayerConditions[i] = true;
-            Players[i].GetComponent<MeshRenderer>().material.color = Color.white;
-            //Debug.Log(i + " make white");
+            PlayerAgents[i]._agent.AgentIndex = i;
+            PlayerAgents[i]._agentHands.Clear();
+            PlayerAgents[i]._agentCondition = true;
+            PlayerAgents[i]._agent.GetComponent<MeshRenderer>().material.color = Color.white;
         }
+        PlayerAgents[playerTurn]._agent.GetComponent<MeshRenderer>().material.color = Color.red;
+        Arrow.transform.position = PlayerAgents[playerTurn]._agent.GetComponent<CardAgent>().GoldText.transform.position;
 
         GameNumber_Text.text = "Game Number : " + gameNumber;
 
-        PokerManager();
         PokerManager();
 
     }
@@ -103,6 +114,14 @@ public class CardArea : MonoBehaviour
         curIdx = 1;
     }
 
+    public void GiveCard(int idx)
+    {
+        int val = GetCard();
+
+        PlayerAgents[idx]._agentHands.Add(val);
+        PlayerAgents[idx]._agent.TakeCard(val);
+    }
+
     public int GetCard()
     {
         // 정상범위 초과 시 -1 리턴
@@ -114,82 +133,42 @@ public class CardArea : MonoBehaviour
 
     public void PokerManager()
     {
-        Debug.Log("PokerManager");
 
-        NextPlayer();
-
-        ActionManager(playerTurn++);
-        if (playerTurn == PlayerNum)
+        for (int idx=0; idx<PlayerNum; idx++)
         {
-            gameTurn++;
-            playerTurn = 0;
-        }
-
-        NextPlayer();
-        Players[playerTurn].GetComponent<MeshRenderer>().material.color = Color.red;
-        //Debug.Log(playerTurn + " make red");
-
-        // 처음 시작할 때 (playerturn == 0 && gameturn == 0) 게임턴만 증가
-        // 끝날 때 (playerturn == playernum && gameturn == 5) 게임턴만 증가
-        // 진행 중 일때 (gameturn != 0 && playerturn 1~5) 플레이어턴 증가, 5가 되면 게임턴 증가 후 플레이어턴 0 초기화
-
-    }
-
-    void ActionManager(int idx)
-    {
-        switch (gameTurn)
-        {
-            case 0:
-                playerTurn = 0;
-                gameTurn++;
-                break;
-
-            // 첫 턴, 플레이어에게 3장 씩 뿌림
-            case 1:
-                for (int i = 0; i < 3; i++)
+            if (PlayerAgents[idx]._agentCondition == false)
+                continue;
+            else
+            {
+                switch (gameTurn)
                 {
-                    for (int k=0; k<PlayerNum; k++)
-                    {
-                        Players[k].TakeCard(GetCard());
-                    }
+                    case 1: // 3장
+                        for (int i = 0; i < 3; i++)
+                            GiveCard(idx);
+                        break;
+                    case 2: // 4장
+                    case 3: // 5장
+                    case 4: // 6장
+                    case 5: // 7장
+                        GiveCard(idx);
+                        break;
+
+                    case 6: // 끝, 정산
+                        EndGame();
+                        break;
                 }
-                    //CardtoPlayers();
-                gameTurn++;
-                playerTurn = 0;
-                break;
-
-            // 두 번째 턴, 총 4장
-            case 2:
-                Players[idx].TakeCard(GetCard());
-                break;
-
-            // 세 번째 턴, 총 5장
-            case 3:
-                Players[idx].TakeCard(GetCard());
-                break;
-
-            // 네 번째 턴, 총 6장
-            case 4:
-                Players[idx].TakeCard(GetCard());
-                break;
-
-            // 다섯 번째 턴, 총 7장
-            case 5:
-                Players[idx].TakeCard(GetCard());
-                break;
-
-            // 끝, 정산
-            case 6:
-                EndGame();
-                break;
-
+                // switch
+            }
+            // if~else
         }
-    }
+        // for
 
-    void CardtoPlayers()
-    {
-        for (int i=0; i<PlayerNum; i++)
-            Players[i].TakeCard(GetCard());
+        // countcard 시켜야함
+        for (int idx = 0; idx < PlayerNum; idx++)
+        {
+            PlayerAgents[idx]._agent.Calculate();
+        }
+
     }
 
     void EndGame()
@@ -200,10 +179,10 @@ public class CardArea : MonoBehaviour
         
         for (int i=0; i<PlayerNum; ++i)
         {
-            if (PlayerConditions[i] == false)
+            if (PlayerAgents[i]._agentCondition == false)
                 continue;
             
-            int playerRank = (int)Players[i].agentRank;
+            int playerRank = (int)PlayerAgents[i]._agent.agentRank;
 
             if (playerRank > winnerRank)
             {
@@ -214,14 +193,13 @@ public class CardArea : MonoBehaviour
             }
             else if (playerRank == winnerRank)
             {
-                int cnt = Players[winner].AgentRankNum.Count;
+                int cnt = PlayerAgents[winner]._agent.AgentRankNum.Count;
 
                 for (int k=0; k<cnt; ++k)
                 {
-                    Debug.Log(Players[winner].AgentRankNum[k] + " " + Players[i].AgentRankNum[k]);
-                    if (Players[winner].AgentRankNum[k] > Players[i].AgentRankNum[k])
+                    if (PlayerAgents[winner]._agent.AgentRankNum[k] > PlayerAgents[i]._agent.AgentRankNum[k])
                     {
-                        if (Players[i].AgentRankNum[k] == (int)CardNumber.Ace)
+                        if (PlayerAgents[i]._agent.AgentRankNum[k] == (int)CardNumber.Ace)
                         {
                             winners.Clear();
                             winners.Add(i);
@@ -231,9 +209,9 @@ public class CardArea : MonoBehaviour
                         else
                             break;
                     }
-                    else if (Players[winner].AgentRankNum[k] < Players[i].AgentRankNum[k])
+                    else if (PlayerAgents[winner]._agent.AgentRankNum[k] < PlayerAgents[i]._agent.AgentRankNum[k])
                     {
-                        if (Players[winner].AgentRankNum[k] == (int)CardNumber.Ace)
+                        if (PlayerAgents[winner]._agent.AgentRankNum[k] == (int)CardNumber.Ace)
                             break;
                         else
                         {
@@ -245,7 +223,6 @@ public class CardArea : MonoBehaviour
                     }
                     if (k == cnt - 1)
                     {
-                        // DRAW....
                         Debug.Log("DRAW..");
                         winners.Add(i);
 
@@ -267,48 +244,68 @@ public class CardArea : MonoBehaviour
         isDone = true;
         StartCoroutine(Wait5Sec(winners));
 
-        //for (int i = 0; i < PlayerNum; i++)
-        //{
-        //    Players[i].EpisodeEnd(winner, tableGold);
-        //}
-        //gameNumber++;
-
-        //AreaReset();  // 여기서 AreaReset 하지 않는 이유가 뭐더라..?
-
     }
-
-    IEnumerator Wait5Sec(List<int> winners)
-    {
-
-        yield return new WaitForSeconds(5.0f);
-        Result_Text.gameObject.SetActive(false);
-        isDone = false;
-        for (int i = 0; i < PlayerNum; i++)
-        {
-            Players[i].EpisodeEnd(winners, tableGold);
-        }
-        gameNumber++;
-    }
-
 
     public void BetButtons(int val)
     {
         if (isDone)
             return;
-        // Half = 0
-        // Call = 1
-        // Die = 2
-        //Debug.Log(playerTurn + " make white");
-        Players[playerTurn].GetComponent<MeshRenderer>().material.color = Color.white;
-        Players[playerTurn].TakeAction(val);
+
+        PlayerAgents[playerTurn]._agent.GetComponent<MeshRenderer>().material.color = Color.white;
+        PlayerAgents[playerTurn]._agent.TakeAction(val);
+
+        NextPlayer();
     }
 
     public void PlayerDie(int idx)
     {
-        //Debug.Log(idx + " make black");
-        Players[idx].GetComponent<MeshRenderer>().material.color = Color.black;
-        PlayerConditions[idx] = false;
-        NextPlayer();
+        PlayerAgents[idx]._agent.GetComponent<MeshRenderer>().material.color = Color.black;
+        PlayerAgents[idx]._agentCondition = false;
+    }
+
+
+    public void NextPlayer()
+    {
+        int dead_cnt = 0;
+        for (int i=0; i<PlayerNum; i++)
+        {
+            if (PlayerAgents[i]._agentCondition == false)
+                dead_cnt++;
+        }
+
+        if (dead_cnt == PlayerNum - 1)
+        {
+            EndGame();
+            return;
+        }
+        else
+        {
+            if (++playerTurn == PlayerNum)
+            {
+                gameTurn++;
+                playerTurn = 0;
+                PokerManager();
+            }
+
+            while (PlayerAgents[playerTurn]._agentCondition == false)
+            {
+                playerTurn++;
+                if (playerTurn == PlayerNum)
+                {
+                    gameTurn++;
+                    playerTurn = 0;
+                    PokerManager();
+                }
+            }
+
+        }
+
+        PlayerAgents[playerTurn]._agent.GetComponent<MeshRenderer>().material.color = Color.red;
+        Arrow.transform.position = PlayerAgents[playerTurn]._agent.GetComponent<CardAgent>().GoldText.transform.position;
+
+        if (gameTurn == 6)
+            EndGame();
+
     }
 
     public void BetGold(int val)
@@ -323,45 +320,29 @@ public class CardArea : MonoBehaviour
         TableGold_Text.text = "TableGold : " + tableGold.ToString();
     }
 
-    public void NextPlayer()
+    IEnumerator Wait5Sec(List<int> winners)
     {
-        int cnt = 0;
-        for (int i=0; i<PlayerNum; i++)
-        {
-            if (PlayerConditions[i] == false)
-                cnt++;
-        }
+        yield return new WaitForSeconds(5.0f);
+        
+        Result_Text.gameObject.SetActive(false);
+        isDone = false;
+        for (int i = 0; i < PlayerNum; i++)
+            PlayerAgents[i]._agent.EpisodeEnd(winners, tableGold);
 
-        if (cnt == PlayerNum - 1)
-        {
-            EndGame();
-            //gameTurn = 6;
-            return;
-        }
-        else
-        {
-            while (PlayerConditions[playerTurn] == false)
-            {
-                playerTurn++;
-                if (playerTurn == PlayerNum)
-                {
-                    gameTurn++;
-                    playerTurn = 0;
-                }
-            }
-
-        }
-
-        Arrow.transform.position = Players[playerTurn].GetComponent<CardAgent>().GoldText.transform.position;
-
-        if (gameTurn == 6)
-            EndGame();
-
+        gameNumber++;
     }
 
 
 }
 
+[System.Serializable]
+public class GameAgents
+{
+    public CardAgent _agent;
+    public bool _agentCondition;
+    public List<int> _agentHands;
+
+}
 
 public class CircularPlayer<T>
 {
