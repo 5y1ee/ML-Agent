@@ -6,6 +6,7 @@ using Unity.MLAgents.Actuators;
 using UnityEngine;
 using TMPro;
 using System;
+using static CardAgent;
 
 public partial class CardAgent : Agent
 {
@@ -24,12 +25,15 @@ public partial class CardAgent : Agent
 
         AgentGold(100);
         RoundGold = 0;
+        Remain_Cards = new int[53];
         Hand = new List<int>();
         Hand_Num = new int[13];
         Hand_Pic = new int[4];
         OppHands = new List<List<int>>();
         OppBets = new List<List<int>>();
         OppCondition = new List<List<bool>>();
+
+        AgentReset();
 
         if (agentType == AgentType.Heuristic)
             Academy.Instance.AutomaticSteppingEnabled = false;
@@ -132,10 +136,10 @@ public partial class CardAgent
     public AgentCondition agentCondition = AgentCondition.Alive;
     public HandRank agentRank = HandRank.None;
 
-    [SerializeField] int Gold, RoundGold,AgentIdx;
+    [SerializeField] int Gold, RoundGold, AgentIdx;
     [SerializeField] double WinRate;
     [SerializeField] List<int> Hand, Rank_Num;
-    [SerializeField] int[] Hand_Num, Hand_Pic;
+    [SerializeField] int[] Hand_Num, Hand_Pic, Remain_Cards;
     [SerializeField] int Hand_cnt;
     [SerializeField] List<List<int>> OppHands;
     [SerializeField] List<List<int>> OppBets;
@@ -149,11 +153,14 @@ public partial class CardAgent
     // Card Methods
     public void TakeCard(int val)
     {
+        int picVal = val / 100, numVal = val % 100;
         Hand.Add(val);
-        Hand_Pic[val / 100]++;
-        Hand_Num[(val % 100) - 1]++;
+        Hand_Pic[picVal]++;
+        Hand_Num[(numVal) - 1]++;
         Hand_cnt = Hand.Count;
+        Remain_Cards[picVal * 13 + numVal] = 0;
 
+        CountCard();
         HandRanking();
 
         string str = "";
@@ -212,6 +219,7 @@ public partial class CardAgent
 
         RoundGold = 0;
 
+        Area.DeckInit(Remain_Cards);
         Hand.Clear();
         Rank_Num.Clear();
         Array.Clear(Hand_Pic, 0, 4);
@@ -257,6 +265,13 @@ public partial class CardAgent
 
 
     // Poker Methods
+
+    void CountCard()
+    {
+
+
+
+    }
 
     void HandRanking()
     {
