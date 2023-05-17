@@ -518,7 +518,12 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 279346979}
+  - {fileID: 1163064355}
+  - {fileID: 1641931935}
+  - {fileID: 1142078180}
+  - {fileID: 1991471285}
   m_Father: {fileID: 0}
   m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -546,6 +551,7 @@ MonoBehaviour:
   - {fileID: 1142078175}
   - {fileID: 1991471280}
   PlayerConditions: 
+  PlayerAgents: []
   isDone: 0
   CardDeck: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   gameTurn: 0
@@ -568,7 +574,7 @@ GameObject:
   - component: {fileID: 279346980}
   - component: {fileID: 279346982}
   m_Layer: 0
-  m_Name: Agent
+  m_Name: Agent#0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -644,13 +650,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 279346975}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -6.35, y: 0.43, z: 2.36}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -3.175, y: 0.215, z: 1.18}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 7
+  m_Father: {fileID: 236928117}
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &279346980
 MonoBehaviour:
@@ -683,6 +689,7 @@ MonoBehaviour:
   Rank_Num: 
   Hand_Num: 
   Hand_Pic: 
+  Remain_Cards: 
   Hand_cnt: 0
 --- !u!114 &279346981
 MonoBehaviour:
@@ -2162,7 +2169,7 @@ GameObject:
   - component: {fileID: 1142078175}
   - component: {fileID: 1142078174}
   m_Layer: 0
-  m_Name: Agent (3)
+  m_Name: Agent#3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2255,6 +2262,7 @@ MonoBehaviour:
   Rank_Num: 
   Hand_Num: 
   Hand_Pic: 
+  Remain_Cards: 
   Hand_cnt: 0
 --- !u!114 &1142078176
 MonoBehaviour:
@@ -2356,13 +2364,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1142078173}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6.44, y: 0.43, z: -3.32}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 3.22, y: 0.215, z: -1.66}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 10
+  m_Father: {fileID: 236928117}
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1155990309
 GameObject:
@@ -2456,7 +2464,7 @@ GameObject:
   - component: {fileID: 1163064350}
   - component: {fileID: 1163064349}
   m_Layer: 0
-  m_Name: Agent (1)
+  m_Name: Agent#1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2549,6 +2557,7 @@ MonoBehaviour:
   Rank_Num: 
   Hand_Num: 
   Hand_Pic: 
+  Remain_Cards: 
   Hand_cnt: 0
 --- !u!114 &1163064351
 MonoBehaviour:
@@ -2650,13 +2659,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1163064348}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -6.12, y: 0.43, z: -3.45}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -3.06, y: 0.215, z: -1.725}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 8
+  m_Father: {fileID: 236928117}
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1337646653
 GameObject:
@@ -3618,7 +3627,7 @@ GameObject:
   - component: {fileID: 1641931930}
   - component: {fileID: 1641931929}
   m_Layer: 0
-  m_Name: Agent (2)
+  m_Name: Agent#2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3711,6 +3720,7 @@ MonoBehaviour:
   Rank_Num: 
   Hand_Num: 
   Hand_Pic: 
+  Remain_Cards: 
   Hand_cnt: 0
 --- !u!114 &1641931931
 MonoBehaviour:
@@ -3812,13 +3822,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1641931928}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.05, y: 0.43, z: -6.41}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.025, y: 0.215, z: -3.205}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 9
+  m_Father: {fileID: 236928117}
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1762498225
 GameObject:
@@ -4574,7 +4584,7 @@ GameObject:
   - component: {fileID: 1991471280}
   - component: {fileID: 1991471279}
   m_Layer: 0
-  m_Name: Agent (4)
+  m_Name: Agent#4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4667,6 +4677,7 @@ MonoBehaviour:
   Rank_Num: 
   Hand_Num: 
   Hand_Pic: 
+  Remain_Cards: 
   Hand_cnt: 0
 --- !u!114 &1991471281
 MonoBehaviour:
@@ -4768,13 +4779,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1991471278}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6.62, y: 0.43, z: 2.7}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 3.31, y: 0.215, z: 1.35}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 11
+  m_Father: {fileID: 236928117}
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2015254136
 GameObject:
