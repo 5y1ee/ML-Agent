@@ -55,7 +55,7 @@ public class CardArea : MonoBehaviour
         isDone = false;
         gameTurn = 0;
         playerTurn = 0;
-        DeckReset();
+        DeckReset(CardDeck);
         ResetGold();
 
         for (int i = 0; i < Players.Length; i++)
@@ -73,26 +73,31 @@ public class CardArea : MonoBehaviour
 
     }
 
-    void DeckReset()
+    public void DeckInit(int[] Deck)
     {
-        Debug.Log("Deck Reset..");
-
-        CardDeck[0] = -1;
+        Deck[0] = -1;
         for (int i = 0; i < m_CardNumber; i++)
         {
             int pic = i / 13;
             int num = i % 13 + 1;
-            CardDeck[i+1] = 100*pic+num;
+            Deck[i + 1] = 100 * pic + num;
         }
+    }
+    void DeckReset(int[] Deck)
+    {
+        Debug.Log("Deck Reset..");
+
+        // Init
+        DeckInit(Deck);
 
         // Shuffle
-        int DeckLength = CardDeck.Length;
+        int DeckLength = Deck.Length;
         for (int i = 1; i < DeckLength; i++)
         {
             int j = Mathf.FloorToInt(Random.Range(1, m_CardNumber + 1));
-            int tmp = CardDeck[i];
-            CardDeck[i] = CardDeck[j];
-            CardDeck[j] = tmp;
+            int tmp = Deck[i];
+            Deck[i] = Deck[j];
+            Deck[j] = tmp;
         }
 
         curIdx = 1;
@@ -138,29 +143,41 @@ public class CardArea : MonoBehaviour
                 playerTurn = 0;
                 gameTurn++;
                 break;
+
             // 첫 턴, 플레이어에게 3장 씩 뿌림
             case 1:
                 for (int i = 0; i < 3; i++)
-                    CardtoPlayers();
+                {
+                    for (int k=0; k<PlayerNum; k++)
+                    {
+                        Players[k].TakeCard(GetCard());
+                    }
+                }
+                    //CardtoPlayers();
                 gameTurn++;
                 playerTurn = 0;
                 break;
+
             // 두 번째 턴, 총 4장
             case 2:
-                Players[idx].TakeCard(CardDeck[curIdx++]);
+                Players[idx].TakeCard(GetCard());
                 break;
+
             // 세 번째 턴, 총 5장
             case 3:
-                Players[idx].TakeCard(CardDeck[curIdx++]);
+                Players[idx].TakeCard(GetCard());
                 break;
+
             // 네 번째 턴, 총 6장
             case 4:
-                Players[idx].TakeCard(CardDeck[curIdx++]);
+                Players[idx].TakeCard(GetCard());
                 break;
+
             // 다섯 번째 턴, 총 7장
             case 5:
-                Players[idx].TakeCard(CardDeck[curIdx++]);
+                Players[idx].TakeCard(GetCard());
                 break;
+
             // 끝, 정산
             case 6:
                 EndGame();
@@ -172,7 +189,7 @@ public class CardArea : MonoBehaviour
     void CardtoPlayers()
     {
         for (int i=0; i<PlayerNum; i++)
-            Players[i].TakeCard(CardDeck[curIdx++]);
+            Players[i].TakeCard(GetCard());
     }
 
     void EndGame()
