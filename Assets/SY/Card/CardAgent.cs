@@ -160,15 +160,18 @@ public partial class CardAgent
         Hand_cnt = Hand.Count;
         Remain_Cards[picVal * 13 + numVal] = 0;
 
-        CountCard();
-        HandRanking();
-
         string str = "";
         for (int i = 0; i < Hand_cnt; i++)
         {
             str += Hand[i].ToString() + ", ";
         }
         HandText.text = str;
+    }
+
+    public void Calculate()
+    {
+        CountCard();
+        HandRanking();
     }
 
     public void TakeAction(int val)
@@ -198,7 +201,6 @@ public partial class CardAgent
                 return;
         }
 
-        Area.PokerManager();
     }
 
 
@@ -246,14 +248,6 @@ public partial class CardAgent
         else
             SetReward(-1 * RoundGold);
 
-        //if (AgentIdx == winner)
-        //{
-        //    AgentGold(gold);
-        //    SetReward(gold);
-        //}
-        //else
-        //    SetReward(-1 * RoundGold);
-
         EndEpisode();
     }
 
@@ -268,7 +262,19 @@ public partial class CardAgent
 
     void CountCard()
     {
+        int _cnt = Area.PlayerAgents.Count;
+        if (_cnt == 7) return;  // 마지막 카드는 히든 // 이미 상대의 1,2번 째 카드는 카운팅하고 있지 않음
 
+        for (int i=0; i< _cnt; i++)
+        {
+            if (i == AgentIdx) continue;
+            if (Area.PlayerAgents[i]._agentCondition == true)
+            {
+                int val = Area.PlayerAgents[i]._agentHands[Hand_cnt - 1];
+                val = (val / 100) * 13 + (val % 100);
+                Remain_Cards[val] = 0;
+            }
+        }
 
 
     }
