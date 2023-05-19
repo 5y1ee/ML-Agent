@@ -108,10 +108,14 @@ public partial class CardAgent
         TWOPAIR = 3,
         TRIPLE = 4,
         STRAIGHT = 5,
-        FLUSH = 6,
-        FULLHOUSE = 7,
-        FOURCARD = 8,
-        STRAIGHTFLUSH = 9,
+        BACKSTRAIGHT = 6,
+        MOUNTAIN = 7,
+        FLUSH = 8,
+        FULLHOUSE = 9,
+        FOURCARD = 10,
+        STRAIGHTFLUSH = 11,
+        BACKSTRAIGHTFLUSH = 12,
+        ROYALSTRAIGHTFLUSH = 13,
         RANKEND
     };
     public enum CardNumber
@@ -172,6 +176,7 @@ public partial class CardAgent
     {
         CountCard();
         HandRanking();
+        Probability();
     }
 
     public void TakeAction(int val)
@@ -206,12 +211,8 @@ public partial class CardAgent
 
     private void OnMouseDown()
     {
-        if (Area.GetPlayerTurn == AgentIdx)
-        {
-            Debug.Log("Click.....");
-            //TakeAction(0);
-        }
-
+        Debug.Log("Click Agent" + AgentIdx);
+        Calculate();
     }
 
     void AgentReset()
@@ -260,6 +261,7 @@ public partial class CardAgent
 
     // Poker Methods
 
+    // 테이블 위 공개 카드들 제외
     void CountCard()
     {
         int _cnt = Area.PlayerAgents.Count;
@@ -271,14 +273,15 @@ public partial class CardAgent
             if (Area.PlayerAgents[i]._agentCondition == true)
             {
                 int val = Area.PlayerAgents[i]._agentHands[Hand_cnt - 1];
-                val = (val / 100) * 13 + (val % 100);
-                Remain_Cards[val] = 0;
+                int val_idx = (val / 100) * 13 + (val % 100);
+                Remain_Cards[val_idx] = 0;
             }
         }
 
 
     }
 
+    // 자신의 패 계산
     void HandRanking()
     {
         // Card Value : 1~13 / 101~113 / 201~213 / 301~313 (스 > 다 > 하 > 클)
@@ -299,7 +302,7 @@ public partial class CardAgent
         13. 로열 스트레이트 플러스 (0.0032%)
         */
         Rank_Num.Clear();
-        // Pair Check pairNum = 0, tripleNum = 0, 
+        int IdxOffset = 1;
         int top = 0, pairCnt = 0, tripleCnt = 0, quadra = 0;
         List<int> pairNums = new List<int>();
         List<int> tripleNums = new List<int>();
@@ -312,38 +315,39 @@ public partial class CardAgent
             {
                 case 1:
                     if (top != (int)CardNumber.Ace)
-                        top = i + 1;
+                        top = i + IdxOffset;
                     break;
 
                 case 2:
-                    pairNums.Add(i + 1);
+                    pairNums.Add(i + IdxOffset);
                     pairCnt++;
 
                     if (top != (int)CardNumber.Ace)
-                        top = i + 1;
+                        top = i + IdxOffset;
 
                     break;
 
                 case 3:
-                    tripleNums.Add(i + 1);
+                    tripleNums.Add(i + IdxOffset);
                     tripleCnt++;
 
                     if (top != (int)CardNumber.Ace)
-                        top = i + 1;
+                        top = i + IdxOffset;
 
                     break;
 
                 case 4:
-                    quadra = i + 1;
+                    quadra = i + IdxOffset;
 
                     if (top != (int)CardNumber.Ace)
-                        top = i + 1;
+                        top = i + IdxOffset;
 
                     break;
             }
 
         }
 
+        // 페어와 트리플 수 중에 Ace 포함 시 이를 가장 큰 수로 취급하게끔 순서를 앞으로 처리
         if (pairCnt > 0 && pairNums[0] == (int)CardNumber.Ace)
         {
             pairNums.RemoveRange(0, 1);
@@ -356,76 +360,98 @@ public partial class CardAgent
         }
 
 
-        // Straight Check 10 > A > 9876...2
-        // 최적화 가능?
-        int straightCnt = 0, straightNum = 0;
-        double[] straightProb = new double[10];
-        for (int i = 0; i < 10; i++)
+        // Straight Check 10 > A > 9 > 8 > ... > 2
+        int straightCnt = 5, straightNum = 0;
+        for (int i = 0; i < (int)CardNumber.Ten; i++)
         {
             int tmp = 0;
-            for (int k = i; k < i + 5; k++)
+            for (int k = i; k < i + straightCnt; k++)
             {
-                if (k == 13)
+                if (Hand_Num[k] > 0)
+                    tmp++;
+
+                if (i == (int)CardNumber.Ten - IdxOffset && k == (int)CardNumber.King - IdxOffset)
                 {
                     if (Hand_Num[0] > 0)
                         tmp++;
+                    break;  // Hand_Num[13] 은 out of range
                 }
-
-                else if (Hand_Num[k] > 0)
-                    tmp++;
-                
             }
 
-
-            if (tmp > straightCnt)
+            if (straightCnt == tmp)
             {
-                straightCnt = tmp;
-            }
-            else if (tmp == straightCnt)
-            {
-                // TODO
-                // 달성 확률이 높은 straight 계산
-            }
-
-            if (straightCnt == 5)
-            {
-                if (i == 10)
+                // 10JQKA는 10스트레이트(마운틴), A2345는 A스트레이트(백스트레이트), 나머지는 시작 숫자로 처리
+                if (i == (int)CardNumber.Ten - IdxOffset)
+                    straightNum = (int)CardNumber.Ten;
+                else if (i == (int)CardNumber.Ace - IdxOffset)
                     straightNum = (int)CardNumber.Ace;
                 else
-                    straightNum = i + 1;
+                    straightNum = i + IdxOffset;
             }
 
         }
 
         // Flush Check
-        int flushCnt = 0; int flushPic = -1;
+        int flushCnt = 5; int flushPic = -1;
         for (int i = 0; i < Hand_Pic.Length; i++)
         {
-            if (flushCnt < Hand_Pic[i])
-                flushCnt = Hand_Pic[i];
-            if (flushCnt == 5)
+            if (flushCnt == Hand_Pic[i])
                 flushPic = i;
         }
 
 
         // Hand Rank
-        if (flushCnt == 5 && straightCnt == 5)
+        if (flushPic > 0 && straightNum > 0)
         {
-            for (int i = straightNum; i < straightNum + 5; i++)
+            if (straightNum == (int)CardNumber.Ten && Hand_Num[0] / 100 == flushPic)
             {
-                if (Hand[i] / 100 != flushPic)
-                    break;
-                if (i == straightNum + 4)
+                bool isRSF = true;
+                for (int i = straightNum - IdxOffset; i < straightNum + straightCnt - 1; i++)
                 {
-                    for (int j = 4; j >= 0; --j)
+                    if (Hand[i] / 100 != flushPic)
                     {
-                        Rank_Num.Add(straightNum + j);
+                        isRSF = false;
+                        break;
                     }
-                    agentRank = HandRank.STRAIGHTFLUSH;
-                    RankText.text = (CardPicture)flushPic + straightNum + "Straight Flush";
+                    
+                }
+
+                if (isRSF)
+                {
+                    Rank_Num.Add(straightNum);
+                    agentRank = HandRank.ROYALSTRAIGHTFLUSH;
+                    RankText.text = (CardPicture)flushPic + straightNum + "Royal Straight Flush";
                     return;
                 }
+
             }
+
+            bool isSF = true;
+            for (int i = straightNum - IdxOffset; i < straightNum + straightCnt; i++)
+            {
+                if (Hand_Num[i] / 100 != flushPic)
+                {
+                    isSF = false;
+                    break;
+                }
+            }
+
+            if (isSF)
+            {
+                Rank_Num.Add(straightNum);
+                if (straightNum == (int)CardNumber.Ace)
+                {
+                    agentRank = HandRank.BACKSTRAIGHTFLUSH;
+                    RankText.text = (CardPicture)flushPic + straightNum + "Back Straight Flush";
+                }
+                else
+                {
+                    agentRank = HandRank.STRAIGHTFLUSH;
+                    RankText.text = (CardPicture)flushPic + straightNum + "Straight Flush";
+                }
+                return;
+            }
+
         }
 
         if (quadra > 0)
@@ -436,7 +462,7 @@ public partial class CardAgent
             return;
         }
 
-        if (tripleCnt > 0 && pairCnt > 0 || tripleCnt > 1)
+        if ((tripleCnt > 0 && pairCnt > 0) || tripleCnt > 1)
         {
             if (tripleCnt > 1)
             {
@@ -463,8 +489,21 @@ public partial class CardAgent
 
         if (straightNum > 0)
         {
-            agentRank = HandRank.STRAIGHT;
-            RankText.text = straightNum + "Straight";
+            switch(straightNum)
+            {
+                case (int)CardNumber.Ten:
+                    agentRank = HandRank.MOUNTAIN;
+                    RankText.text = straightNum + "Mountain";
+                    break;
+                case (int)CardNumber.Ace:
+                    agentRank = HandRank.BACKSTRAIGHT;
+                    RankText.text = straightNum + "Back Straight";
+                    break;
+                default:
+                    agentRank = HandRank.STRAIGHT;
+                    RankText.text = straightNum + "Straight";
+                    break;
+            }
             return;
         }
         
@@ -485,7 +524,7 @@ public partial class CardAgent
             return;
         }
 
-        if (pairCnt > 0)
+        if (pairCnt == 1)
         {
             Rank_Num.Add(pairNums[pairCnt - 1]);
             agentRank = HandRank.ONEPAIR;
@@ -498,7 +537,189 @@ public partial class CardAgent
         RankText.text = top + "Top";
         return;
 
+    }
 
+    [SerializeField]
+    List<double> PairList = new List<double>();
+
+    void Probability()
+    {
+        double Pair = 0, TwoPair = 0,
+            Triple = 0, Straight = 0,
+            Flush = 0, FullHouse = 0,
+            FourCard = 0, StaraightFlush = 0,
+            Prob = 0;
+
+        
+        List<double> TwoPairList = new List<double>();
+        List<double> TripleList = new List<double>();
+        List<double> StraightList = new List<double>();
+
+        ulong denominator = 0, numerator = 0;   // 분모, 분자
+
+        List<int> TargetCnt = new List<int>();
+        List<int> RequireCnt = new List<int>();
+        int TotalCnt = Remain_Cards.Length - 1;
+        int RemainCardCnt = Remain_Cards.Length - Area.GetIndex;
+        int RemainTurn = 7 - Hand.Count;
+
+        Debug.Log(RemainTurn + "<-turn, card->" + RemainCardCnt);
+        denominator = Combination(RemainCardCnt, RemainTurn);
+
+        // Pair Prob
+        for (int i=0; i<13; i++)
+        {
+            Prob = 0;
+            if (Hand_Num[i] + RemainTurn >= 2)
+            {
+                numerator = 0;
+                TargetCnt.Clear();
+                TargetCnt.Add(0);
+                RequireCnt.Clear();
+                RequireCnt.Add(2 - Hand_Num[i]);
+
+                for (int idx = 1; idx <= TotalCnt; ++idx)
+                {
+                    if (Remain_Cards[idx] % 100 == i + 1)
+                        ++TargetCnt[0];
+                }
+                Debug.Log("RequireCnt : " + RequireCnt[0] + ", TargetCnt : " + TargetCnt[0]);
+                numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+                Debug.Log("numerator : " + numerator + ", denominator : " + denominator);
+
+                Prob = (double)numerator / denominator;
+                PairList.Add(Prob);
+            }
+        }
+        foreach(var item in PairList)
+            Pair += item;
+
+        /*
+
+        // Two Pair Prob
+        for (int i = 0; i < 12; i++)
+        {
+            for (int k = i + 1; k < 13; k++)
+            {
+                Prob = 0;
+                if (2-Hand_Num[i] + 2-Hand_Num[k] <= RemainTurn)
+                {
+                    numerator = 0;
+                    TargetCnt.Clear();
+                    TargetCnt.Add(0);
+                    TargetCnt.Add(0);
+                    RequireCnt.Clear();
+                    RequireCnt.Add(2 - Hand_Num[i]);
+                    RequireCnt.Add(2 - Hand_Num[k]);
+
+                    for (int idx = 1; idx <= TotalCnt; idx++)
+                    {
+                        if (Remain_Cards[idx] % 100 == i + 1)
+                            ++TargetCnt[0];
+                    }
+                    for (int idx = 1; idx <= TotalCnt; idx++)
+                    {
+                        if (Remain_Cards[idx] % 100 == k + 1)
+                            ++TargetCnt[1];
+                    }
+                    numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+
+                    Prob = (double)numerator / denominator;
+                    TwoPairList.Add(Prob);
+                }
+            }
+        }
+        foreach (var item in TwoPairList)
+            TwoPair += item;
+
+        // Triple Prob
+        for (int i = 0; i < 13; i++)
+        {
+            Prob = 0;
+            if (Hand_Num[i] + RemainTurn >= 3)
+            {
+                numerator = 0;
+                TargetCnt.Clear();
+                TargetCnt.Add(0);
+                RequireCnt.Clear();
+                RequireCnt.Add(3 - Hand_Num[i]);
+
+                for (int idx = 1; idx <= TotalCnt; ++idx)
+                {
+                    if (Remain_Cards[idx] % 100 == i + 1)
+                        ++TargetCnt[0];
+                }
+                numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+
+                Prob = (double)numerator / denominator;
+                TripleList.Add(Prob);
+            }
+        }
+        foreach (var item in TripleList)
+            Triple += item;
+
+        // Straight Prob
+        for (int i=0; i < 10; i++)
+        {
+            Prob = 0;
+            
+        }
+
+         */
+
+
+    }
+
+    ulong Combination(int n, int r)
+    {
+        if (r == 0) return 1;
+        if (n - r < r)
+            r = n - r;
+
+        ulong frac = 0, denominator = 1, numerator = 1;
+
+        for (int i = n - r + 1; i <= n; i++) numerator *= (ulong)i;
+        for (int i = 1; i <= r; i++) denominator *= (ulong)i;
+
+
+        // 37C4
+        // 37-4+1= 34*35*36*37 
+        //Debug.Log("numerator : " + numerator + ", denominator : " + denominator);
+
+        frac = numerator / denominator;
+
+        return frac;
+    }
+
+    // A,K 2페어를 위해서는 A 1개, K 2개가 필요
+    // RequireCnt => { 1, 2 } 필요한 A, K의 수
+    // TargetCnt => { 4, 3 } 남아있는 A, K의 수
+    // ReaminTurn => 4 앞으로 받을 수 있는 카드의 최대 수
+    ulong Calc_Numerator(int TotalCnt, List<int> RequireCnt, List<int> TargetCnt, int RemainTurn)
+    {
+        ulong numerator = 0, achieve = 1;
+        int cnt = TargetCnt.Count;
+        int Require = 0;
+        foreach (var item in RequireCnt) { Require += item; }
+
+
+        for (int idx = 0; idx < cnt; idx++)
+        {
+            // 각 타겟 별 성취요건 경우의 수 곱하고,
+            achieve *= Combination(TargetCnt[idx], RequireCnt[idx]);
+        }
+        // 성취요건 외의 남은 카드는 랜덤하게 뽑는 경우의 수 곱하면 되는거 아닌가?
+        numerator = achieve * Combination(TotalCnt - Require, RemainTurn - Require);
+
+
+
+        //for (int i = 0; i <= RemainTurn - Require; i++) // 필요한거 다 받고 남은 카드는 어떻게 채울 것인가?
+        //{
+        //    // 필요한 카드 수 C 몇개 받을건지? * 필요한 카드를 제외한 전체 C 몇개 받을건지?
+        //    //numerator += Combination(TargetCnt, RemainTurn - i) * Combination(TotalCnt - TargetCnt, i);
+        //}
+
+        return numerator;
     }
 
 }
