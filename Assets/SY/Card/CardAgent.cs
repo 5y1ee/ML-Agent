@@ -26,6 +26,8 @@ public partial class CardAgent : Agent
         AgentGold(100);
         RoundGold = 0;
         Remain_Cards = new int[53];
+        Remain_Nums = new int[13];
+        Remain_Pics = new int[4];
         Hand = new List<int>();
         Hand_Num = new int[13];
         Hand_Pic = new int[4];
@@ -143,7 +145,7 @@ public partial class CardAgent
     [SerializeField] int Gold, RoundGold, AgentIdx;
     [SerializeField] double WinRate;
     [SerializeField] List<int> Hand, Rank_Num;
-    [SerializeField] int[] Hand_Num, Hand_Pic, Remain_Cards;
+    [SerializeField] int[] Hand_Num, Hand_Pic, Remain_Cards, Remain_Nums, Remain_Pics;
     [SerializeField] int Hand_cnt;
     [SerializeField] List<List<int>> OppHands;
     [SerializeField] List<List<int>> OppBets;
@@ -160,9 +162,11 @@ public partial class CardAgent
         int picVal = val / 100, numVal = val % 100;
         Hand.Add(val);
         Hand_Pic[picVal]++;
-        Hand_Num[(numVal) - 1]++;
+        Hand_Num[numVal - IdxOffset]++;
         Hand_cnt = Hand.Count;
         Remain_Cards[picVal * 13 + numVal] = 0;
+        Remain_Pics[picVal]--;
+        Remain_Nums[numVal-IdxOffset]--;
 
         string str = "";
         for (int i = 0; i < Hand_cnt; i++)
@@ -223,6 +227,10 @@ public partial class CardAgent
         RoundGold = 0;
 
         Area.DeckInit(Remain_Cards);
+        Array.Clear(Remain_Nums, 0, 13);
+        Array.Fill(Remain_Nums, 4);
+        Array.Clear(Remain_Pics, 0, 4);
+        Array.Fill(Remain_Pics, 13);
         Hand.Clear();
         Rank_Num.Clear();
         Array.Clear(Hand_Pic, 0, 4);
@@ -261,6 +269,8 @@ public partial class CardAgent
 
     // Poker Methods
 
+    int IdxOffset = 1;
+
     // 테이블 위 공개 카드들 제외
     void CountCard()
     {
@@ -275,6 +285,8 @@ public partial class CardAgent
                 int val = Area.PlayerAgents[i]._agentHands[Hand_cnt - 1];
                 int val_idx = (val / 100) * 13 + (val % 100);
                 Remain_Cards[val_idx] = 0;
+                Remain_Pics[val / 100]--;
+                Remain_Nums[val % 100 - IdxOffset]--;
             }
         }
 
@@ -302,7 +314,7 @@ public partial class CardAgent
         13. 로열 스트레이트 플러스 (0.0032%)
         */
         Rank_Num.Clear();
-        int IdxOffset = 1;
+        
         int top = 0, pairCnt = 0, tripleCnt = 0, quadra = 0;
         List<int> pairNums = new List<int>();
         List<int> tripleNums = new List<int>();
@@ -557,44 +569,48 @@ public partial class CardAgent
 
         ulong denominator = 0, numerator = 0;   // 분모, 분자
 
+        // TargetCnt : 필요한 카드(타겟)의 남아있는 개수
         List<int> TargetCnt = new List<int>();
+        // RequireCnt : 필요한 카드(타겟)이 필요한 개수
         List<int> RequireCnt = new List<int>();
         int TotalCnt = Remain_Cards.Length - 1;
         int RemainCardCnt = Remain_Cards.Length - Area.GetIndex;
         int RemainTurn = 7 - Hand.Count;
 
-        Debug.Log(RemainTurn + "<-turn, card->" + RemainCardCnt);
+        //Debug.Log(RemainTurn + "<-turn, card->" + RemainCardCnt);
         denominator = Combination(RemainCardCnt, RemainTurn);
 
         // Pair Prob
         for (int i=0; i<13; i++)
         {
             Prob = 0;
-            if (Hand_Num[i] + RemainTurn >= 2)
+            int icnt = Math.Clamp(Hand_Num[i], 0, 2);
+            if (Hand_Num[i] >= 2) Prob = 1;
+            else if (Hand_Num[i] + RemainTurn >= 2)
             {
                 numerator = 0;
                 TargetCnt.Clear();
                 TargetCnt.Add(0);
                 RequireCnt.Clear();
-                RequireCnt.Add(2 - Hand_Num[i]);
-
-                for (int idx = 1; idx <= TotalCnt; ++idx)
-                {
-                    if (Remain_Cards[idx] % 100 == i + 1)
-                        ++TargetCnt[0];
-                }
-                Debug.Log("RequireCnt : " + RequireCnt[0] + ", TargetCnt : " + TargetCnt[0]);
+                RequireCnt.Add(2 - icnt);
+                TargetCnt[0] = Remain_Nums[i];
                 numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
-                Debug.Log("numerator : " + numerator + ", denominator : " + denominator);
+
+                /*
+                //for (int idx = 1; idx <= TotalCnt; ++idx)
+                //    if (Remain_Cards[idx] % 100 == i + IdxOffset)
+                //        ++TargetCnt[0];
+                //Debug.Log("RequireCnt : " + RequireCnt[0] + ", TargetCnt : " + TargetCnt[0]);
+                //Debug.Log("numerator : " + numerator + ", denominator : " + denominator);
+                */
 
                 Prob = (double)numerator / denominator;
-                PairList.Add(Prob);
             }
+
+            PairList.Add(Prob);
         }
         foreach(var item in PairList)
             Pair += item;
-
-        /*
 
         // Two Pair Prob
         for (int i = 0; i < 12; i++)
@@ -602,31 +618,38 @@ public partial class CardAgent
             for (int k = i + 1; k < 13; k++)
             {
                 Prob = 0;
-                if (2-Hand_Num[i] + 2-Hand_Num[k] <= RemainTurn)
+                int icnt = Math.Clamp(Hand_Num[i], 0, 2);
+                int kcnt = Math.Clamp(Hand_Num[k], 0, 2);
+
+                if (icnt == 2 && kcnt == 2) Prob = 1;
+                else if (2 - icnt + 2 - kcnt <= RemainTurn)
                 {
                     numerator = 0;
                     TargetCnt.Clear();
                     TargetCnt.Add(0);
                     TargetCnt.Add(0);
                     RequireCnt.Clear();
-                    RequireCnt.Add(2 - Hand_Num[i]);
-                    RequireCnt.Add(2 - Hand_Num[k]);
-
+                    RequireCnt.Add(2 - icnt);
+                    RequireCnt.Add(2 - kcnt);
+                    /*
                     for (int idx = 1; idx <= TotalCnt; idx++)
                     {
-                        if (Remain_Cards[idx] % 100 == i + 1)
+                        if (Remain_Cards[idx] % 100 == i + IdxOffset)
                             ++TargetCnt[0];
                     }
                     for (int idx = 1; idx <= TotalCnt; idx++)
                     {
-                        if (Remain_Cards[idx] % 100 == k + 1)
+                        if (Remain_Cards[idx] % 100 == k + IdxOffset)
                             ++TargetCnt[1];
                     }
+                    */
+                    TargetCnt[0] = Remain_Nums[i];
+                    TargetCnt[1] = Remain_Nums[k];
                     numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
-
                     Prob = (double)numerator / denominator;
-                    TwoPairList.Add(Prob);
                 }
+
+                TwoPairList.Add(Prob);
             }
         }
         foreach (var item in TwoPairList)
@@ -636,36 +659,120 @@ public partial class CardAgent
         for (int i = 0; i < 13; i++)
         {
             Prob = 0;
-            if (Hand_Num[i] + RemainTurn >= 3)
+            int icnt = Math.Clamp(Hand_Num[i], 0, 3);
+            if (Hand_Num[i] == 3) Prob = 1;
+            else if (Hand_Num[i] + RemainTurn >= 3)
             {
                 numerator = 0;
                 TargetCnt.Clear();
                 TargetCnt.Add(0);
                 RequireCnt.Clear();
-                RequireCnt.Add(3 - Hand_Num[i]);
-
+                RequireCnt.Add(3 - icnt);
+                /*
                 for (int idx = 1; idx <= TotalCnt; ++idx)
                 {
-                    if (Remain_Cards[idx] % 100 == i + 1)
+                    if (Remain_Cards[idx] % 100 == i + IdxOffset)
                         ++TargetCnt[0];
                 }
+                */
+                TargetCnt[0] = Remain_Nums[i];
                 numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
 
                 Prob = (double)numerator / denominator;
-                TripleList.Add(Prob);
             }
+            TripleList.Add(Prob);
         }
         foreach (var item in TripleList)
             Triple += item;
 
         // Straight Prob
-        for (int i=0; i < 10; i++)
+        for (int i=0; i < (int)CardNumber.Nine; i++)
         {
             Prob = 0;
-            
+            int cnt = 0;
+            for (int k=i; k<i+5; k++)
+                if (Hand_Num[k]>0)
+                    cnt++;
+
+            if (cnt == 5) Prob = 1;
+            else if (5 - cnt <= RemainTurn)
+            {
+                numerator = 0;
+                TargetCnt.Clear();
+                RequireCnt.Clear();
+                for (int num = 0; num < cnt; num++)
+                    TargetCnt.Add(0);
+
+                int idx = 0;
+                for (int k = i; k < i + 5; k++)
+                {
+                    // 없는 놈이 타겟
+                    if (Hand_Num[k] == 0)
+                    {
+                        TargetCnt[idx] = Remain_Nums[k];
+                        RequireCnt[idx] = 1;
+                        idx++;
+                    }
+                }
+                numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+                Prob = (double)numerator / denominator;
+
+            }
+            StraightList.Add(Prob);
         }
 
-         */
+        // Mountain
+        {
+            int cnt = 0;
+            if (Hand_Num[0] > 0) cnt++;
+            for (int i = (int)CardNumber.Ten; i <= (int)CardNumber.King; i++)
+                if (Hand_Num[i] > 0) cnt++;
+
+            if (cnt == 5) Prob = 1;
+            else if (5 - cnt <= RemainTurn)
+            {
+                numerator = 0;
+                TargetCnt.Clear();
+                RequireCnt.Clear();
+                for (int num = 0; num < cnt; num++)
+                    TargetCnt.Add(0);
+
+                int idx = 0;
+
+                for (int k = (int)CardNumber.Ten; k < (int)CardNumber.King; k++)
+                {
+                    // 없는 놈이 타겟
+                    if (Hand_Num[k] == 0)
+                    {
+                        TargetCnt[idx] = Remain_Nums[k];
+                        RequireCnt[idx] = 1;
+                        idx++;
+                    }
+                }
+                if (Hand_Num[0] == 0)
+                {
+                    TargetCnt[idx] = Remain_Nums[0];
+                    RequireCnt[idx] = 1;
+                    idx++;
+                }
+
+                numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+                Prob = (double)numerator / denominator;
+
+            }
+            StraightList.Add(Prob);
+        }
+
+        foreach (var item in StraightList)
+            Straight += item;
+
+        // Flush Prob
+
+
+
+        // Full House Prob
+
+        // Four Card Prob
 
 
     }
