@@ -686,7 +686,7 @@ public partial class CardAgent
             Triple += item;
 
         // Straight Prob
-        for (int i=0; i < (int)CardNumber.Nine; i++)
+        for (int i=0; i < 9; i++)
         {
             Prob = 0;
             int cnt = 0;
@@ -700,8 +700,11 @@ public partial class CardAgent
                 numerator = 0;
                 TargetCnt.Clear();
                 RequireCnt.Clear();
-                for (int num = 0; num < cnt; num++)
+                for (int num = 0; num < 5 - cnt; num++)
+                {
                     TargetCnt.Add(0);
+                    RequireCnt.Add(1);
+                }
 
                 int idx = 0;
                 for (int k = i; k < i + 5; k++)
@@ -709,9 +712,8 @@ public partial class CardAgent
                     // 없는 놈이 타겟
                     if (Hand_Num[k] == 0)
                     {
-                        TargetCnt[idx] = Remain_Nums[k];
-                        RequireCnt[idx] = 1;
-                        idx++;
+                        //Debug.Log(cnt + " " + idx);
+                        TargetCnt[idx++] = Remain_Nums[k];
                     }
                 }
                 numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
@@ -725,7 +727,7 @@ public partial class CardAgent
         {
             int cnt = 0;
             if (Hand_Num[0] > 0) cnt++;
-            for (int i = (int)CardNumber.Ten; i <= (int)CardNumber.King; i++)
+            for (int i = 9; i < 13; i++)
                 if (Hand_Num[i] > 0) cnt++;
 
             if (cnt == 5) Prob = 1;
@@ -734,8 +736,11 @@ public partial class CardAgent
                 numerator = 0;
                 TargetCnt.Clear();
                 RequireCnt.Clear();
-                for (int num = 0; num < cnt; num++)
+                for (int num = 0; num < 5 - cnt; num++)
+                {
                     TargetCnt.Add(0);
+                    RequireCnt.Add(1);
+                }
 
                 int idx = 0;
 
@@ -743,18 +748,10 @@ public partial class CardAgent
                 {
                     // 없는 놈이 타겟
                     if (Hand_Num[k] == 0)
-                    {
-                        TargetCnt[idx] = Remain_Nums[k];
-                        RequireCnt[idx] = 1;
-                        idx++;
-                    }
+                        TargetCnt[idx++] = Remain_Nums[k];
                 }
                 if (Hand_Num[0] == 0)
-                {
-                    TargetCnt[idx] = Remain_Nums[0];
-                    RequireCnt[idx] = 1;
-                    idx++;
-                }
+                    TargetCnt[idx++] = Remain_Nums[0];
 
                 numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
                 Prob = (double)numerator / denominator;
