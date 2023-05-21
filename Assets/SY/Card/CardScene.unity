@@ -544,13 +544,6 @@ MonoBehaviour:
   GameNumber_Text: {fileID: 2063308582}
   Result_Text: {fileID: 1375317810}
   gameNumber: 0
-  Players:
-  - {fileID: 279346980}
-  - {fileID: 1163064350}
-  - {fileID: 1641931930}
-  - {fileID: 1142078175}
-  - {fileID: 1991471280}
-  PlayerConditions: 
   PlayerAgents: []
   isDone: 0
   CardDeck: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -681,6 +674,23 @@ MonoBehaviour:
   agentType: 0
   agentCondition: 0
   agentRank: 0
+  AgentProb:
+    Pair: 0
+    TwoPair: 0
+    Triple: 0
+    Straight: 0
+    Flush: 0
+    FullHouse: 0
+    FourCard: 0
+    StaraightFlush: 0
+    PairList: []
+    TwoPairList: []
+    TripleList: []
+    StraightList: []
+    FlushList: []
+    FullHouseList: []
+    FourCardList: []
+    StraightFlushList: []
   Gold: 0
   RoundGold: 0
   AgentIdx: 0
@@ -690,6 +700,8 @@ MonoBehaviour:
   Hand_Num: 
   Hand_Pic: 
   Remain_Cards: 
+  Remain_Nums: 
+  Remain_Pics: 
   Hand_cnt: 0
 --- !u!114 &279346981
 MonoBehaviour:
@@ -716,9 +728,9 @@ MonoBehaviour:
   m_Model: {fileID: 0}
   m_InferenceDevice: 0
   m_BehaviorType: 0
-  m_BehaviorName: My Behavior
+  m_BehaviorName: Agent#0
   TeamId: 0
-  m_UseChildSensors: 1
+  m_UseChildSensors: 0
   m_UseChildActuators: 1
   m_ObservableAttributeHandling: 0
 --- !u!114 &279346982
@@ -2254,6 +2266,23 @@ MonoBehaviour:
   agentType: 0
   agentCondition: 0
   agentRank: 0
+  AgentProb:
+    Pair: 0
+    TwoPair: 0
+    Triple: 0
+    Straight: 0
+    Flush: 0
+    FullHouse: 0
+    FourCard: 0
+    StaraightFlush: 0
+    PairList: []
+    TwoPairList: []
+    TripleList: []
+    StraightList: []
+    FlushList: []
+    FullHouseList: []
+    FourCardList: []
+    StraightFlushList: []
   Gold: 0
   RoundGold: 0
   AgentIdx: 0
@@ -2263,6 +2292,8 @@ MonoBehaviour:
   Hand_Num: 
   Hand_Pic: 
   Remain_Cards: 
+  Remain_Nums: 
+  Remain_Pics: 
   Hand_cnt: 0
 --- !u!114 &1142078176
 MonoBehaviour:
@@ -2289,9 +2320,9 @@ MonoBehaviour:
   m_Model: {fileID: 0}
   m_InferenceDevice: 0
   m_BehaviorType: 0
-  m_BehaviorName: My Behavior
+  m_BehaviorName: Agent#3
   TeamId: 0
-  m_UseChildSensors: 1
+  m_UseChildSensors: 0
   m_UseChildActuators: 1
   m_ObservableAttributeHandling: 0
 --- !u!135 &1142078177
@@ -2549,6 +2580,23 @@ MonoBehaviour:
   agentType: 0
   agentCondition: 0
   agentRank: 0
+  AgentProb:
+    Pair: 0
+    TwoPair: 0
+    Triple: 0
+    Straight: 0
+    Flush: 0
+    FullHouse: 0
+    FourCard: 0
+    StaraightFlush: 0
+    PairList: []
+    TwoPairList: []
+    TripleList: []
+    StraightList: []
+    FlushList: []
+    FullHouseList: []
+    FourCardList: []
+    StraightFlushList: []
   Gold: 0
   RoundGold: 0
   AgentIdx: 0
@@ -2558,6 +2606,8 @@ MonoBehaviour:
   Hand_Num: 
   Hand_Pic: 
   Remain_Cards: 
+  Remain_Nums: 
+  Remain_Pics: 
   Hand_cnt: 0
 --- !u!114 &1163064351
 MonoBehaviour:
@@ -2584,9 +2634,9 @@ MonoBehaviour:
   m_Model: {fileID: 0}
   m_InferenceDevice: 0
   m_BehaviorType: 0
-  m_BehaviorName: My Behavior
+  m_BehaviorName: Agent#1
   TeamId: 0
-  m_UseChildSensors: 1
+  m_UseChildSensors: 0
   m_UseChildActuators: 1
   m_ObservableAttributeHandling: 0
 --- !u!135 &1163064352
@@ -3712,6 +3762,23 @@ MonoBehaviour:
   agentType: 0
   agentCondition: 0
   agentRank: 0
+  AgentProb:
+    Pair: 0
+    TwoPair: 0
+    Triple: 0
+    Straight: 0
+    Flush: 0
+    FullHouse: 0
+    FourCard: 0
+    StaraightFlush: 0
+    PairList: []
+    TwoPairList: []
+    TripleList: []
+    StraightList: []
+    FlushList: []
+    FullHouseList: []
+    FourCardList: []
+    StraightFlushList: []
   Gold: 0
   RoundGold: 0
   AgentIdx: 0
@@ -3721,6 +3788,8 @@ MonoBehaviour:
   Hand_Num: 
   Hand_Pic: 
   Remain_Cards: 
+  Remain_Nums: 
+  Remain_Pics: 
   Hand_cnt: 0
 --- !u!114 &1641931931
 MonoBehaviour:
@@ -3747,9 +3816,9 @@ MonoBehaviour:
   m_Model: {fileID: 0}
   m_InferenceDevice: 0
   m_BehaviorType: 0
-  m_BehaviorName: My Behavior
+  m_BehaviorName: Agent#2
   TeamId: 0
-  m_UseChildSensors: 1
+  m_UseChildSensors: 0
   m_UseChildActuators: 1
   m_ObservableAttributeHandling: 0
 --- !u!135 &1641931932
@@ -4669,6 +4738,23 @@ MonoBehaviour:
   agentType: 0
   agentCondition: 0
   agentRank: 0
+  AgentProb:
+    Pair: 0
+    TwoPair: 0
+    Triple: 0
+    Straight: 0
+    Flush: 0
+    FullHouse: 0
+    FourCard: 0
+    StaraightFlush: 0
+    PairList: []
+    TwoPairList: []
+    TripleList: []
+    StraightList: []
+    FlushList: []
+    FullHouseList: []
+    FourCardList: []
+    StraightFlushList: []
   Gold: 0
   RoundGold: 0
   AgentIdx: 0
@@ -4678,6 +4764,8 @@ MonoBehaviour:
   Hand_Num: 
   Hand_Pic: 
   Remain_Cards: 
+  Remain_Nums: 
+  Remain_Pics: 
   Hand_cnt: 0
 --- !u!114 &1991471281
 MonoBehaviour:
@@ -4704,9 +4792,9 @@ MonoBehaviour:
   m_Model: {fileID: 0}
   m_InferenceDevice: 0
   m_BehaviorType: 0
-  m_BehaviorName: My Behavior
+  m_BehaviorName: Agent#4
   TeamId: 0
-  m_UseChildSensors: 1
+  m_UseChildSensors: 0
   m_UseChildActuators: 1
   m_ObservableAttributeHandling: 0
 --- !u!135 &1991471282
