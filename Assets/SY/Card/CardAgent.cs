@@ -142,6 +142,8 @@ public partial class CardAgent
     public AgentCondition agentCondition = AgentCondition.Alive;
     public HandRank agentRank = HandRank.None;
 
+    public RankProbability AgentProb;
+
     [SerializeField] int Gold, RoundGold, AgentIdx;
     [SerializeField] double WinRate;
     [SerializeField] List<int> Hand, Rank_Num;
@@ -551,21 +553,36 @@ public partial class CardAgent
 
     }
 
-    [SerializeField]
-    List<double> PairList = new List<double>();
 
     void Probability()
     {
-        double Pair = 0, TwoPair = 0,
-            Triple = 0, Straight = 0,
-            Flush = 0, FullHouse = 0,
-            FourCard = 0, StaraightFlush = 0,
-            Prob = 0;
+        double Prob = 0;
 
-        
-        List<double> TwoPairList = new List<double>();
-        List<double> TripleList = new List<double>();
-        List<double> StraightList = new List<double>();
+        //double Pair = 0, TwoPair = 0,
+        //    Triple = 0, Straight = 0,
+        //    Flush = 0, FullHouse = 0,
+        //    FourCard = 0, StaraightFlush = 0,
+        //    Prob = 0;
+
+
+        //List<double> PairList = new List<double>();
+        //List<double> TwoPairList = new List<double>();
+        //List<double> TripleList = new List<double>();
+        //List<double> StraightList = new List<double>();
+        //List<double> FlushList = new List<double>();
+        //List<double> FullHouseList = new List<double>();
+        //List<double> FourCardList = new List<double>();
+        //List<double> StraightFlushList = new List<double>();
+
+        AgentProb.PairList.Clear();
+        AgentProb.TwoPairList.Clear();
+        AgentProb.TripleList.Clear();
+        AgentProb.StraightList.Clear();
+        AgentProb.FlushList.Clear();
+        AgentProb.FullHouseList.Clear();
+        AgentProb.FourCardList.Clear();
+        AgentProb.StraightFlushList.Clear();
+
 
         ulong denominator = 0, numerator = 0;   // 분모, 분자
 
@@ -585,8 +602,8 @@ public partial class CardAgent
         {
             Prob = 0;
             int icnt = Math.Clamp(Hand_Num[i], 0, 2);
-            if (Hand_Num[i] >= 2) Prob = 1;
-            else if (Hand_Num[i] + RemainTurn >= 2)
+            if (icnt >= 2) Prob = 1;
+            else if (icnt + RemainTurn >= 2)
             {
                 numerator = 0;
                 TargetCnt.Clear();
@@ -607,10 +624,10 @@ public partial class CardAgent
                 Prob = (double)numerator / denominator;
             }
 
-            PairList.Add(Prob);
+            AgentProb.PairList.Add(Prob);
         }
-        foreach(var item in PairList)
-            Pair += item;
+        foreach(var item in AgentProb.PairList)
+            AgentProb.Pair += item;
 
         // Two Pair Prob
         for (int i = 0; i < 12; i++)
@@ -649,19 +666,19 @@ public partial class CardAgent
                     Prob = (double)numerator / denominator;
                 }
 
-                TwoPairList.Add(Prob);
+                AgentProb.TwoPairList.Add(Prob);
             }
         }
-        foreach (var item in TwoPairList)
-            TwoPair += item;
+        foreach (var item in AgentProb.TwoPairList)
+            AgentProb.TwoPair += item;
 
         // Triple Prob
         for (int i = 0; i < 13; i++)
         {
             Prob = 0;
             int icnt = Math.Clamp(Hand_Num[i], 0, 3);
-            if (Hand_Num[i] == 3) Prob = 1;
-            else if (Hand_Num[i] + RemainTurn >= 3)
+            if (icnt == 3) Prob = 1;
+            else if (icnt + RemainTurn >= 3)
             {
                 numerator = 0;
                 TargetCnt.Clear();
@@ -680,10 +697,10 @@ public partial class CardAgent
 
                 Prob = (double)numerator / denominator;
             }
-            TripleList.Add(Prob);
+            AgentProb.TripleList.Add(Prob);
         }
-        foreach (var item in TripleList)
-            Triple += item;
+        foreach (var item in AgentProb.TripleList)
+            AgentProb.Triple += item;
 
         // Straight Prob
         for (int i=0; i < 9; i++)
@@ -720,7 +737,7 @@ public partial class CardAgent
                 Prob = (double)numerator / denominator;
 
             }
-            StraightList.Add(Prob);
+            AgentProb.StraightList.Add(Prob);
         }
 
         // Mountain
@@ -757,20 +774,90 @@ public partial class CardAgent
                 Prob = (double)numerator / denominator;
 
             }
-            StraightList.Add(Prob);
+            AgentProb.StraightList.Add(Prob);
         }
-
-        foreach (var item in StraightList)
-            Straight += item;
+        foreach (var item in AgentProb.StraightList)
+            AgentProb.Straight += item;
 
         // Flush Prob
+        for (int i=0; i<4; i++)
+        {
+            Prob = 0;
+            int picCnt = Math.Clamp(Hand_Pic[i], 0, 5);
+            if (picCnt == 5) Prob = 1;
+            else if(picCnt + RemainTurn >= 5)
+            {
+                numerator = 0;
+                TargetCnt.Clear();
+                RequireCnt.Clear();
+                TargetCnt.Add(Remain_Pics[i]);
+                RequireCnt.Add(5-picCnt);
 
-
+                numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+                Prob = (double)numerator / denominator;
+            }
+            AgentProb.FlushList.Add(Prob);
+        }
+        foreach (var item in AgentProb.FlushList)
+            AgentProb.Flush += item;
 
         // Full House Prob
+        for (int i = 0; i < 12; i++)
+        {
+            for (int k = i + 1; k < 13; k++)
+            {
+                Prob = 0;
+                int icnt = Math.Clamp(Hand_Num[i], 0, 3);
+                int kcnt = Math.Clamp(Hand_Num[k], 0, 2);
+
+                if (icnt == 3 && kcnt == 2) Prob = 1;
+                else if (3 - icnt + 2 - kcnt <= RemainTurn)
+                {
+                    numerator = 0;
+                    TargetCnt.Clear();
+                    TargetCnt.Add(0);
+                    TargetCnt.Add(0);
+                    RequireCnt.Clear();
+                    RequireCnt.Add(3 - icnt);
+                    RequireCnt.Add(2 - kcnt);
+
+                    TargetCnt[0] = Remain_Nums[i];
+                    TargetCnt[1] = Remain_Nums[k];
+                    numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+                    Prob = (double)numerator / denominator;
+                }
+
+                AgentProb.FullHouseList.Add(Prob);
+            }
+        }
+        foreach (var item in AgentProb.FullHouseList)
+            AgentProb.FullHouse += item;
 
         // Four Card Prob
+        for (int i = 0; i < 13; i++)
+        {
+            Prob = 0;
+            int icnt = Math.Clamp(Hand_Num[i], 0, 4);
+            if (icnt == 4) Prob = 1;
+            else if (icnt + RemainTurn >= 4)
+            {
+                numerator = 0;
+                TargetCnt.Clear();
+                TargetCnt.Add(0);
+                RequireCnt.Clear();
+                RequireCnt.Add(4 - icnt);
 
+                TargetCnt[0] = Remain_Nums[i];
+                numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
+
+                Prob = (double)numerator / denominator;
+            }
+            AgentProb.FourCardList.Add(Prob);
+        }
+        foreach (var item in AgentProb.FourCardList)
+            AgentProb.FourCard += item;
+
+        // Straight Flush Prob
 
     }
 
@@ -784,11 +871,6 @@ public partial class CardAgent
 
         for (int i = n - r + 1; i <= n; i++) numerator *= (ulong)i;
         for (int i = 1; i <= r; i++) denominator *= (ulong)i;
-
-
-        // 37C4
-        // 37-4+1= 34*35*36*37 
-        //Debug.Log("numerator : " + numerator + ", denominator : " + denominator);
 
         frac = numerator / denominator;
 
@@ -825,5 +907,35 @@ public partial class CardAgent
 
         return numerator;
     }
+
+}
+
+
+[System.Serializable]
+public class RankProbability
+{
+    // Top : 17.4
+    // Pair : 43.8
+    // Two Pair : 23.5
+    // Triple : 4.83
+    // Straight : 4.62
+    // Flush : 3.03
+    // Full House : 2.60
+    // Four Card 0.168
+    // Straight Flush : 0.0309
+
+    public double Pair = 0, TwoPair = 0,
+            Triple = 0, Straight = 0,
+            Flush = 0, FullHouse = 0,
+            FourCard = 0, StaraightFlush = 0;
+
+    public List<double> PairList = new List<double>();
+    public List<double> TwoPairList = new List<double>();
+    public List<double> TripleList = new List<double>();
+    public List<double> StraightList = new List<double>();
+    public List<double> FlushList = new List<double>();
+    public List<double> FullHouseList = new List<double>();
+    public List<double> FourCardList = new List<double>();
+    public List<double> StraightFlushList = new List<double>();
 
 }
