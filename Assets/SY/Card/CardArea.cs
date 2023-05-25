@@ -114,7 +114,7 @@ public class CardArea : MonoBehaviour
         curIdx = 1;
     }
 
-    public void GiveCard(int idx)
+    void GiveCard(int idx)
     {
         int val = GetCard();
 
@@ -131,7 +131,7 @@ public class CardArea : MonoBehaviour
             return CardDeck[curIdx++];
     }
 
-    public void PokerManager()
+    void PokerManager()
     {
 
         for (int idx=0; idx<PlayerNum; idx++)
@@ -264,7 +264,7 @@ public class CardArea : MonoBehaviour
     }
 
 
-    public void NextPlayer()
+    void NextPlayer()
     {
         int dead_cnt = 0;
         for (int i=0; i<PlayerNum; i++)
