@@ -22,6 +22,8 @@ public partial class CardAgent : Agent
     // 환경이 처음 시작될 때 한번만 호출되는 함수로 에이전트에 필요한 값들을 초기화
     public override void Initialize()
     {
+        Debug.Log(this.name + " Initialize");
+
         m_ResetParams = Academy.Instance.EnvironmentParameters;
 
         AgentGold(100);
@@ -35,17 +37,51 @@ public partial class CardAgent : Agent
         Hand_Num = new int[13];
         Hand_Pic = new int[4];
 
-        OppHands = new List<List<int>>();
-        OppBets = new List<List<int>>();
-        OppCondition = new List<List<bool>>();
+        //OppHands = new List<List<int>>();
+        //OppBets = new List<List<int>>();
+        //OppCondition = new List<List<bool>>();
 
-        AgentReset();
+        //Debug.Log("## " + Area.m_playerNumber);
+        //Initialize가 Area의 Start보다 먼저 이뤄져서 Area 변수가 제대로 할당되지 않음.
+
+        //AgentReset();
 
         if (agentType == AgentType.Heuristic)
+        {
+            Debug.Log(AgentIdx + "AutomaticSteppingEnable : False");
             Academy.Instance.AutomaticSteppingEnabled = false;
+        }
 
         //Academy.Instance.EnvironmentStep();
         //Agent.Requ
+
+        // 에이전트가 매 스텝을 수행하기 이전에 호출되는 이벤트로, 델리게이트 기능을 통해 함수를 호출한다.
+        Academy.Instance.AgentPreStep += WaitTimeInference;
+    }
+
+    // OppInit
+    public void OppInit()
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            if (i == AgentIdx) continue;
+            oppAgents.Add(new OpponentAgents(i));
+        }
+    }
+
+    // Heuristic
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        //Debug.Log(AgentIdx + "Heuristic");
+
+        //base.Heuristic(actionsOut);
+
+        var discreteActionsOut = actionsOut.DiscreteActions;
+
+        //discreteActionsOut[0] = 0;
+
+
+        discreteActionsOut[0] = (int)Input.GetAxis("Vertical");
 
     }
 
@@ -73,15 +109,28 @@ public partial class CardAgent : Agent
     // 에이전트에게 전달할 벡터 관측 정보의 요소들을 결정 (필수 요소#1)
     public override void CollectObservations(VectorSensor sensor)
     {
+        //Debug.Log(AgentIdx + "CollectObservations");
 
-        sensor.AddObservation(1);
+        //
+        //sensor.AddObservation((float)WinRate);
+        sensor.AddObservation((float)1.0f);
     }
 
-    // (필수 요소#2)
-    public override void OnActionReceived(ActionBuffers actions)
+    // 매 스텝 파이썬 코드로부터 행동 결과를 전달받았을 때 에이전트의 행동을 처리하고 보상을 제공, 에피소드 종료 여부를 결정하는 함수 (필수 요소#2)
+    public override void OnActionReceived(ActionBuffers actionBuffers)
     {
+        //Debug.Log(AgentIdx + "OnActionReceived");
+
+        var actions = actionBuffers.DiscreteActions;
 
         AddReward(-0.01f);
+
+        //if (Hand_cnt == 7)
+        //{
+        //    SetReward(1f);
+        //    여기서 갑자기 겜 끝내니까 이상해졌네!
+        //    EndEpisode();
+        //}
 
     }
 
@@ -93,15 +142,41 @@ public partial class CardAgent : Agent
     // 에피소드가 시작될 때마다 호출되는 함수 (필수 요소#3)
     public override void OnEpisodeBegin()
     {
-        Debug.Log("OnEpisodeBegin");
+        Debug.Log(AgentIdx + "OnEpisodeBegin");
 
         AgentReset();
 
-        if(AgentIdx == Area.PlayerNum-1)
-            Area.AreaReset();
+        //if(AgentIdx == Area.PlayerNum-1)
+        //if (Area.GetTurn != 1)
+        //{
+        //    Debug.Log(this.name + " Call AreaReset");
+        //    Area.AreaReset();
+        //}
+
+        Area.CheckReady(AgentIdx);
+
     }
 
+    public float DecisionWaitingTime = 5f;
+    float m_currentTime = 0f;
 
+    public void WaitTimeInference(int action)
+    {
+        //Debug.Log(AgentIdx + "WaitTimeInference");
+
+        if (Academy.Instance.IsCommunicatorOn)
+            RequestDecision();
+        else
+        {
+            if (m_currentTime >= DecisionWaitingTime)
+            {
+                m_currentTime = 0f;
+                RequestDecision();
+            }
+            else
+                m_currentTime += Time.fixedDeltaTime;
+        }
+    }
 
 }
 
@@ -157,13 +232,13 @@ public partial class CardAgent
     [SerializeField] List<int> Hand, Rank_Num;
     [SerializeField] int[] Hand_Num, Hand_Pic, Remain_Cards, Remain_Nums, Remain_Pics;
     [SerializeField] int Hand_cnt;
-    [SerializeField] List<List<int>> OppHands;
-    [SerializeField] List<List<int>> OppBets;
-    [SerializeField] List<List<bool>> OppCondition;
+    //[SerializeField] List<List<int>> OppHands;
+    //[SerializeField] List<List<int>> OppBets;
+    //[SerializeField] List<List<bool>> OppCondition;
+    public List<OpponentAgents> oppAgents;
 
     //
     public int AgentIndex { get { return AgentIdx; } set { AgentIdx = value; } }
-
     public List<int> AgentRankNum { get { return Rank_Num; } }
 
     // Card Methods
@@ -186,11 +261,25 @@ public partial class CardAgent
         HandText.text = str;
     }
 
+    // OnMouseDown, PokerManager에서 카드를 분배했을 때 호출
     public void Calculate()
     {
         CountCard();
         HandRanking();
-        Probability();
+
+        AgentProb.PredictWinRate(Area.AlivePlayerNum);
+        int RemainCardCnt = Remain_Cards.Length - Area.GetIndex;
+        int RemainTurn = 7 - Hand.Count;
+        Probability(RemainCardCnt, RemainTurn, Hand_Num, Hand_Pic, AgentProb);
+
+        for (int i=0; i<4; ++i)
+        {
+            RemainTurn = 7 - oppAgents[i].Hands.Count;
+            Probability(RemainCardCnt, RemainTurn, oppAgents[i].Hand_Num, oppAgents[i].Hand_Pic, oppAgents[i].Probs);
+        }
+
+
+
     }
 
     public void TakeAction(int val)
@@ -256,8 +345,11 @@ public partial class CardAgent
 
     }
 
+    // 에피소드 시작 전 에이전트 변수들을 리셋 // Initialize, OnEpisodeBegin 에서 호출
     void AgentReset()
     {
+        Debug.Log(this.name + " AgentReset");
+
         agentCondition = AgentCondition.Alive;
         agentRank = HandRank.None;
 
@@ -276,9 +368,11 @@ public partial class CardAgent
 
         AgentProb.ProbInit();
 
-        OppHands.Clear();
-        OppBets.Clear();
-        OppCondition.Clear();
+        //OppHands.Clear();
+        //OppBets.Clear();
+        //OppCondition.Clear();
+        for (int i = 0; i < 4; i++)
+            oppAgents[i].Reset();
 
         HandText.text = "QWER";
 
@@ -313,20 +407,27 @@ public partial class CardAgent
     // 테이블 위 공개 카드들 제외
     void CountCard()
     {
-        int _cnt = Area.PlayerAgents.Count;
-        if (_cnt == 7) return;  // 마지막 카드는 히든 // 이미 상대의 1,2번 째 카드는 카운팅하고 있지 않음
+        if (Hand_cnt == 7) return;  // 마지막 카드는 히든 // 이미 상대의 1,2번 째 카드는 카운팅하고 있지 않음
 
+        int _cnt = Area.PlayerAgents.Count, _idx = 0;
         for (int i=0; i< _cnt; i++)
         {
             if (i == AgentIdx) continue;
             if (Area.PlayerAgents[i]._agentCondition == true)
             {
+                //Debug.Log(this.name + " i , cnt " + i + " " + _cnt);
                 int val = Area.PlayerAgents[i]._agentHands[Hand_cnt - 1];
                 int val_idx = (val / 100) * 13 + (val % 100);
                 Remain_Cards[val_idx] = 0;
                 Remain_Pics[val / 100]--;
                 Remain_Nums[val % 100 - IdxOffset]--;
+
+                oppAgents[_idx].Hands.Add(val);
+                oppAgents[_idx].Hand_Pic[val / 100]++;
+                oppAgents[_idx].Hand_Num[val % 100 - IdxOffset]++;
             }
+            ++_idx;
+
         }
 
     }
@@ -589,28 +690,30 @@ public partial class CardAgent
     }
 
 
-    void Probability()
+    /*
+    //double Pair = 0, TwoPair = 0,
+    //    Triple = 0, Straight = 0,
+    //    Flush = 0, FullHouse = 0,
+    //    FourCard = 0, StaraightFlush = 0,
+    //    Prob = 0;
+
+
+    //List<double> PairList = new List<double>();
+    //List<double> TwoPairList = new List<double>();
+    //List<double> TripleList = new List<double>();
+    //List<double> StraightList = new List<double>();
+    //List<double> FlushList = new List<double>();
+    //List<double> FullHouseList = new List<double>();
+    //List<double> FourCardList = new List<double>();
+    //List<double> StraightFlushList = new List<double>();
+    */
+    void Probability(int RemainCardCnt, int RemainTurn, int[] AryNum, int[] AryPic, RankProbability rank)
     {
         double Prob = 0;
-        /*
-        //double Pair = 0, TwoPair = 0,
-        //    Triple = 0, Straight = 0,
-        //    Flush = 0, FullHouse = 0,
-        //    FourCard = 0, StaraightFlush = 0,
-        //    Prob = 0;
 
-
-        //List<double> PairList = new List<double>();
-        //List<double> TwoPairList = new List<double>();
-        //List<double> TripleList = new List<double>();
-        //List<double> StraightList = new List<double>();
-        //List<double> FlushList = new List<double>();
-        //List<double> FullHouseList = new List<double>();
-        //List<double> FourCardList = new List<double>();
-        //List<double> StraightFlushList = new List<double>();
-        */
-
-        AgentProb.ProbInit();
+        rank.ProbInit();
+        //AgentProb.ProbInit();
+        //AgentProb.PredictWinRate(Area.AlivePlayerNum);
 
         ulong denominator = 0, numerator = 0;   // 분모, 분자
 
@@ -618,9 +721,11 @@ public partial class CardAgent
         List<int> TargetCnt = new List<int>();
         // RequireCnt : 필요한 카드(타겟)이 필요한 개수
         List<int> RequireCnt = new List<int>();
+
         int TotalCnt = Remain_Cards.Length - 1;
-        int RemainCardCnt = Remain_Cards.Length - Area.GetIndex;
-        int RemainTurn = 7 - Hand.Count;
+
+        //int RemainCardCnt = Remain_Cards.Length - Area.GetIndex;
+        //int RemainTurn = 7 - Hand.Count;
 
         denominator = Combination(RemainCardCnt, RemainTurn);
 
@@ -628,7 +733,7 @@ public partial class CardAgent
         for (int i=0; i<13; i++)
         {
             Prob = 0;
-            int icnt = Math.Clamp(Hand_Num[i], 0, 2);
+            int icnt = Math.Clamp(AryNum[i], 0, 2);
             if (icnt >= 2) Prob = 1;
             else if (icnt + RemainTurn >= 2)
             {
@@ -651,11 +756,11 @@ public partial class CardAgent
                 Prob = (double)numerator / denominator;
             }
 
-            AgentProb.PairList.Add(Prob);
+            rank.PairList.Add(Prob);
         }
-        foreach(var item in AgentProb.PairList)
-            AgentProb.Pair *= (1.0 - item);
-        AgentProb.Pair = 1.0 - AgentProb.Pair;
+        foreach(var item in rank.PairList)
+            rank.Pair *= (1.0 - item);
+        rank.Pair = 1.0 - rank.Pair;
 
         // Two Pair Prob
         for (int i = 0; i < 12; i++)
@@ -663,8 +768,8 @@ public partial class CardAgent
             for (int k = i + 1; k < 13; k++)
             {
                 Prob = 0;
-                int icnt = Math.Clamp(Hand_Num[i], 0, 2);
-                int kcnt = Math.Clamp(Hand_Num[k], 0, 2);
+                int icnt = Math.Clamp(AryNum[i], 0, 2);
+                int kcnt = Math.Clamp(AryNum[k], 0, 2);
 
                 if (icnt == 2 && kcnt == 2) Prob = 1;
                 else if (2 - icnt + 2 - kcnt <= RemainTurn)
@@ -694,22 +799,21 @@ public partial class CardAgent
                     Prob = (double)numerator / denominator;
                 }
 
-                AgentProb.TwoPairList.Add(Prob);
+                rank.TwoPairList.Add(Prob);
             }
         }
-        foreach (var item in AgentProb.TwoPairList)
+        foreach (var item in rank.TwoPairList)
         {
-            //if (AgentIdx == 0)
-            //    Debug.Log(item + " " + AgentProb.TwoPair);
-            AgentProb.TwoPair *= (1 - item);
+
+            rank.TwoPair *= (1 - item);
         }
-        AgentProb.TwoPair = 1.0 - AgentProb.TwoPair;
+        rank.TwoPair = 1.0 - rank.TwoPair;
 
         // Triple Prob
         for (int i = 0; i < 13; i++)
         {
             Prob = 0;
-            int icnt = Math.Clamp(Hand_Num[i], 0, 3);
+            int icnt = Math.Clamp(AryNum[i], 0, 3);
             if (icnt == 3) Prob = 1;
             else if (icnt + RemainTurn >= 3)
             {
@@ -730,11 +834,11 @@ public partial class CardAgent
 
                 Prob = (double)numerator / denominator;
             }
-            AgentProb.TripleList.Add(Prob);
+            rank.TripleList.Add(Prob);
         }
-        foreach (var item in AgentProb.TripleList)
-            AgentProb.Triple *= (1 - item);
-        AgentProb.Triple = 1.0 - AgentProb.Triple;
+        foreach (var item in rank.TripleList)
+            rank.Triple *= (1 - item);
+        rank.Triple = 1.0 - rank.Triple;
 
         // Straight Prob
         for (int i=0; i < 9; i++)
@@ -742,7 +846,7 @@ public partial class CardAgent
             Prob = 0;
             int cnt = 0;
             for (int k=i; k<i+5; k++)
-                if (Hand_Num[k]>0)
+                if (AryNum[k]>0)
                     cnt++;
 
             if (cnt == 5) Prob = 1;
@@ -761,7 +865,7 @@ public partial class CardAgent
                 for (int k = i; k < i + 5; k++)
                 {
                     // 없는 놈이 타겟
-                    if (Hand_Num[k] == 0)
+                    if (AryNum[k] == 0)
                     {
                         //Debug.Log(cnt + " " + idx);
                         TargetCnt[idx++] = Remain_Nums[k];
@@ -771,15 +875,15 @@ public partial class CardAgent
                 Prob = (double)numerator / denominator;
 
             }
-            AgentProb.StraightList.Add(Prob);
+            rank.StraightList.Add(Prob);
         }
 
         // Mountain
         {
             int cnt = 0;
-            if (Hand_Num[0] > 0) cnt++;
+            if (AryNum[0] > 0) cnt++;
             for (int i = 9; i < 13; i++)
-                if (Hand_Num[i] > 0) cnt++;
+                if (AryNum[i] > 0) cnt++;
 
             if (cnt == 5) Prob = 1;
             else if (5 - cnt <= RemainTurn)
@@ -798,27 +902,27 @@ public partial class CardAgent
                 for (int k = (int)CardNumber.Ten; k < (int)CardNumber.King; k++)
                 {
                     // 없는 놈이 타겟
-                    if (Hand_Num[k] == 0)
+                    if (AryNum[k] == 0)
                         TargetCnt[idx++] = Remain_Nums[k];
                 }
-                if (Hand_Num[0] == 0)
+                if (AryNum[0] == 0)
                     TargetCnt[idx++] = Remain_Nums[0];
 
                 numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
                 Prob = (double)numerator / denominator;
 
             }
-            AgentProb.StraightList.Add(Prob);
+            rank.StraightList.Add(Prob);
         }
-        foreach (var item in AgentProb.StraightList)
-            AgentProb.Straight *= (1 - item);
-        AgentProb.Straight = 1.0 - AgentProb.Straight;
+        foreach (var item in rank.StraightList)
+            rank.Straight *= (1 - item);
+        rank.Straight = 1.0 - rank.Straight;
 
         // Flush Prob
         for (int i=0; i<4; i++)
         {
             Prob = 0;
-            int picCnt = Math.Clamp(Hand_Pic[i], 0, 5);
+            int picCnt = Math.Clamp(AryPic[i], 0, 5);
             if (picCnt == 5) Prob = 1;
             else if(picCnt + RemainTurn >= 5)
             {
@@ -831,11 +935,11 @@ public partial class CardAgent
                 numerator = Calc_Numerator(RemainCardCnt, RequireCnt, TargetCnt, RemainTurn);
                 Prob = (double)numerator / denominator;
             }
-            AgentProb.FlushList.Add(Prob);
+            rank.FlushList.Add(Prob);
         }
-        foreach (var item in AgentProb.FlushList)
-            AgentProb.Flush *= (1 - item);
-        AgentProb.Flush = 1.0 - AgentProb.Flush;
+        foreach (var item in rank.FlushList)
+            rank.Flush *= (1 - item);
+        rank.Flush = 1.0 - rank.Flush;
 
         // Full House Prob
         for (int i = 0; i < 12; i++)
@@ -848,8 +952,8 @@ public partial class CardAgent
                 for (int k = i + 1; k < 13; k++)
                 {
                     Prob = 0;
-                    int icnt = Math.Clamp(Hand_Num[i], 0, first);
-                    int kcnt = Math.Clamp(Hand_Num[k], 0, second);
+                    int icnt = Math.Clamp(AryNum[i], 0, first);
+                    int kcnt = Math.Clamp(AryNum[k], 0, second);
 
                     if (icnt == first && kcnt == second) Prob = 1;
                     else if (first - icnt + second - kcnt <= RemainTurn)
@@ -868,19 +972,19 @@ public partial class CardAgent
                         Prob = (double)numerator / denominator;
                     }
 
-                    AgentProb.FullHouseList.Add(Prob);
+                    rank.FullHouseList.Add(Prob);
                 }
             }
         }
-        foreach (var item in AgentProb.FullHouseList)
-            AgentProb.FullHouse *= (1 - item);
-        AgentProb.FullHouse = 1.0 - AgentProb.FullHouse;
+        foreach (var item in rank.FullHouseList)
+            rank.FullHouse *= (1 - item);
+        rank.FullHouse = 1.0 - rank.FullHouse;
 
         // Four Card Prob
         for (int i = 0; i < 13; i++)
         {
             Prob = 0;
-            int icnt = Math.Clamp(Hand_Num[i], 0, 4);
+            int icnt = Math.Clamp(AryNum[i], 0, 4);
             if (icnt == 4) Prob = 1;
             else if (icnt + RemainTurn >= 4)
             {
@@ -895,14 +999,14 @@ public partial class CardAgent
 
                 Prob = (double)numerator / denominator;
             }
-            AgentProb.FourCardList.Add(Prob);
+            rank.FourCardList.Add(Prob);
         }
-        foreach (var item in AgentProb.FourCardList)
-            AgentProb.FourCard *= (1 - item);
-        AgentProb.FourCard = 1.0 - AgentProb.FourCard;
+        foreach (var item in rank.FourCardList)
+            rank.FourCard *= (1 - item);
+        rank.FourCard = 1.0 - rank.FourCard;
 
         // Straight Flush Prob
-
+        // 얘 구현 해야하나 고민되네
     }
 
     ulong Combination(int n, int r)
@@ -951,10 +1055,6 @@ public partial class CardAgent
         return numerator;
     }
 
-    public void WinningRate()
-    {
-
-    }
 
 }
 
@@ -971,6 +1071,8 @@ public class RankProbability
     // Full House : 2.60
     // Four Card 0.168
     // Straight Flush : 0.0309
+    public double[] AccumulatedProbs = new double[9] { 0.000311, 0.00199, 0.028, 0.0582, 0.104, 0.153, 0.388, 0.826, 1.0 };
+    public double[] PredictedWinRates = new double[9];
 
     public double Pair = 1, TwoPair = 1,
             Triple = 1, Straight = 1,
@@ -991,6 +1093,8 @@ public class RankProbability
 
     public void ProbListClear()
     {
+        Array.Clear(PredictedWinRates, 0, 9);
+
         PairList.Clear();
         TwoPairList.Clear();
         TripleList.Clear();
@@ -1006,6 +1110,17 @@ public class RankProbability
         Flush = 1; FullHouse = 1; FourCard = 1; StaraightFlush = 1;
 
         ProbListClear();
+    }
+
+    public void PredictWinRate(int remainNums)
+    {
+        for (int i=0; i<9; i++)
+        {
+            double p = 1 - AccumulatedProbs[i], q = 1;
+            for (int k=0; k<remainNums; k++)
+                q *= p;
+            PredictedWinRates[i] = 1 - q;
+        }
     }
 
 }
