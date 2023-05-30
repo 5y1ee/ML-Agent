@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.MLAgents;
@@ -16,7 +17,9 @@ public class CardArea : MonoBehaviour
     public TextMeshProUGUI TableGold_Text;
     public TextMeshProUGUI GameNumber_Text;
     public TextMeshProUGUI Result_Text;
-    public int gameNumber = 1;
+    [SerializeField]
+    public int gameNumber = 1, m_playerNumber, m_playerAliveNumber;
+    Color m_oriColor;
 
     public List<GameAgents> PlayerAgents;
 
@@ -28,8 +31,8 @@ public class CardArea : MonoBehaviour
 
     // Methods
     public List<int> GetPlayerHands(int idx) { return PlayerAgents[idx]._agentHands;  }
-    public int PlayerNum { get { return PlayerAgents.Count; } }
-
+    public int PlayerNum { get { return m_playerNumber; } }
+    public int AlivePlayerNum { get { return m_playerAliveNumber; } }
     public int GetTurn { get { return gameTurn; } }
     public int GetPlayerTurn { get { return playerTurn; } set { playerTurn = value; } }
     public int GetIndex { get { return curIdx; } }
@@ -38,20 +41,31 @@ public class CardArea : MonoBehaviour
     // Basic Methods
     void Start()
     {
+        Debug.Log(this.name + " Start");
+
         m_ResetParams = Academy.Instance.EnvironmentParameters;
 
         int _cnt = this.transform.childCount;
+        int _idx = 0;
         PlayerAgents = new List<GameAgents>();
         for (int i=0; i<_cnt; i++)
         {
+            if (this.transform.GetChild(i).gameObject.activeInHierarchy == false) continue;
             PlayerAgents.Add(new GameAgents());
-            PlayerAgents[i]._agent = this.transform.GetChild(i).GetComponent<CardAgent>();
-            PlayerAgents[i]._agentCondition = true;
-            PlayerAgents[i]._agentHands = new List<int>();
+            PlayerAgents[_idx]._agent = this.transform.GetChild(i).GetComponent<CardAgent>();
+            PlayerAgents[_idx]._agent.AgentIndex = i;
+            PlayerAgents[_idx]._agentCondition = true;
+            //PlayerAgents[_idx]._agentHands = new List<int>();
+            PlayerAgents[_idx]._agent.OppInit();
+            _idx++;
         }
+        m_playerNumber = _idx;
+
+        //m_oriColor = PlayerAgents[0]._agent.GetComponentInChildren<MeshRenderer>().material.color;
+        m_oriColor = PlayerAgents[0]._agent.transform.GetChild(0).GetComponent<MeshRenderer>().material.color;
 
         gameNumber = 1;
-        AreaReset();
+        //AreaReset();
     }
 
     // ML-Agents Methods
@@ -60,22 +74,45 @@ public class CardArea : MonoBehaviour
 
     }
 
+    public void CheckReady(int _agentIdx)
+    {
+        PlayerAgents[_agentIdx]._ready = true;
+
+        int _cnt = 0;
+        for (int i=0; i<m_playerNumber; i++)
+        {
+            if (PlayerAgents[i]._ready == true) ++_cnt;
+            else
+                break;
+        }
+        if (_cnt == m_playerNumber)
+        {
+            AreaReset();
+            for (int i = 0; i < m_playerNumber; i++)
+                PlayerAgents[i]._ready = false;
+        }
+    }
+
+    // Area 환경을 리셋하는 함수 // OnEpisodeBegin에서 한 번, Start에서 한 번 호출한다.
     public void AreaReset()
     {
+        Debug.Log(this.name + " AreaReset");
+
         isDone = false;
         gameTurn = 1;
         playerTurn = 0;
+        m_playerAliveNumber = m_playerNumber;
         DeckReset(CardDeck);
         ResetGold();
 
         for (int i = 0; i < PlayerNum; i++)
         {
-            PlayerAgents[i]._agent.AgentIndex = i;
             PlayerAgents[i]._agentHands.Clear();
             PlayerAgents[i]._agentCondition = true;
-            PlayerAgents[i]._agent.GetComponent<MeshRenderer>().material.color = Color.white;
+            //PlayerAgents[i]._agent.GetComponentInChildren<MeshRenderer>().material.color = m_oriColor;
+            PlayerAgents[i]._agent.transform.GetChild(0).GetComponent<MeshRenderer>().material.color = m_oriColor;
         }
-        PlayerAgents[playerTurn]._agent.GetComponent<MeshRenderer>().material.color = Color.red;
+        PlayerAgents[playerTurn]._agent.transform.GetChild(0).GetComponent<MeshRenderer>().material.color = Color.red;
         Arrow.transform.position = PlayerAgents[playerTurn]._agent.GetComponent<CardAgent>().GoldText.transform.position;
 
         GameNumber_Text.text = "Game Number : " + gameNumber;
@@ -105,7 +142,8 @@ public class CardArea : MonoBehaviour
         int DeckLength = Deck.Length;
         for (int i = 1; i < DeckLength; i++)
         {
-            int j = Mathf.FloorToInt(Random.Range(1, m_CardNumber + 1));
+            // UnityEngine.Random과 System.Random 이 존재한다.
+            int j = Mathf.FloorToInt(UnityEngine.Random.Range(1, m_CardNumber + 1));
             int tmp = Deck[i];
             Deck[i] = Deck[j];
             Deck[j] = tmp;
@@ -173,6 +211,8 @@ public class CardArea : MonoBehaviour
 
     void EndGame()
     {
+        Debug.Log("[End Game]");
+
         List<int> winners = new List<int>();
         int winner = 0;
         int winnerRank = 0;
@@ -251,7 +291,7 @@ public class CardArea : MonoBehaviour
         if (isDone)
             return;
 
-        PlayerAgents[playerTurn]._agent.GetComponent<MeshRenderer>().material.color = Color.white;
+        PlayerAgents[playerTurn]._agent.transform.GetChild(0).GetComponent<MeshRenderer>().material.color = m_oriColor;
         PlayerAgents[playerTurn]._agent.TakeAction(val);
 
         NextPlayer();
@@ -259,8 +299,9 @@ public class CardArea : MonoBehaviour
 
     public void PlayerDie(int idx)
     {
-        PlayerAgents[idx]._agent.GetComponent<MeshRenderer>().material.color = Color.black;
+        PlayerAgents[idx]._agent.transform.GetChild(0).GetComponent<MeshRenderer>().material.color = Color.black;
         PlayerAgents[idx]._agentCondition = false;
+        m_playerAliveNumber--;
     }
 
 
@@ -300,7 +341,7 @@ public class CardArea : MonoBehaviour
 
         }
 
-        PlayerAgents[playerTurn]._agent.GetComponent<MeshRenderer>().material.color = Color.red;
+        PlayerAgents[playerTurn]._agent.transform.GetChild(0).GetComponent<MeshRenderer>().material.color = Color.red;
         Arrow.transform.position = PlayerAgents[playerTurn]._agent.GetComponent<CardAgent>().GoldText.transform.position;
 
         if (gameTurn == 6)
@@ -341,7 +382,43 @@ public class GameAgents
     public CardAgent _agent;
     public bool _agentCondition;
     public List<int> _agentHands;
+    public bool _ready;
 
+    public GameAgents()
+    {
+        _agentHands = new List<int>();
+        _ready = false;
+        _agentCondition = false;
+    }
+}
+
+[System.Serializable]
+public class OpponentAgents
+{
+    public int AgentIdx;
+    public RankProbability Probs;
+    public List<int> Hands;
+    public int[] Hand_Num, Hand_Pic;
+    public List<int> Bets;
+
+    public OpponentAgents(int _idx)
+    {
+        AgentIdx = _idx;
+        Probs = new RankProbability();
+        Hands = new List<int>();
+        Bets = new List<int>();
+        Hand_Num = new int[13];
+        Hand_Pic = new int[4];
+    }
+
+    public void Reset()
+    {
+        Probs.ProbInit();
+        Hands.Clear();
+        Bets.Clear();
+        Array.Clear(Hand_Num, 0, 13);
+        Array.Clear(Hand_Pic, 0, 4);
+    }
 }
 
 public class CircularPlayer<T>
