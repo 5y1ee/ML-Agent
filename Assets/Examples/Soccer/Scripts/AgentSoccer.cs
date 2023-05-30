@@ -145,6 +145,7 @@ public class AgentSoccer : Agent
     public override void OnActionReceived(ActionBuffers actionBuffers)
 
     {
+        Debug.Log(this.name + " OnActionReceived");
 
         if (position == Position.Goalie)
         {

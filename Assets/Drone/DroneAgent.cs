@@ -113,6 +113,8 @@ public class DroneAgent : Agent
     // C# 의 in 예약어가 붙은 매개변수는 레퍼런스를 전달함. 레퍼런스로 전달받은 ActionBuffers 형태의 actionsOut에 사용자의 커스텀 입력값을 저장
     public override void Heuristic(in ActionBuffers actionsOut)
     {
+        Debug.Log("Heuristic");
+
         var continuousActionsOut = actionsOut.ContinuousActions;
 
         continuousActionsOut[0] = Input.GetAxis("Vertical");
